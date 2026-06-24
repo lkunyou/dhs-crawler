@@ -1,0 +1,110 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: thai-auto-parts-crm
+  
+  # 数据源配置
+  datasource:
+    url: jdbc:mysql://8.163.58.109:3306/thai_auto_parts_crm?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: thai_auto_parts_crm
+    password: ${DB_PASSWORD:tDdY8NX2xJ6HpdHz}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  # Redis配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+      lettuce:
+        pool:
+          max-active: 20
+          max-idle: 10
+          min-idle: 5
+          max-wait: 3000ms
+
+  # 邮件配置
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: your-email@gmail.com
+    password: your-app-password
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+  # Jackson配置
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Bangkok
+    serialization:
+      write-dates-as-timestamps: false
+  
+  # Security配置
+  security:
+    user:
+      name: admin
+      password: password
+
+# MyBatis Plus配置
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.thaiautoparts.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# 日志配置
+logging:
+  level:
+    com.thaiautoparts: debug
+    com.thaiautoparts.repository: debug
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# 自定义配置
+app:
+  # JWT配置
+  jwt:
+    secret: ThaiAutoPartsCRM2024SecretKeyMustBeLongEnoughForHS512Algorithm
+    expiration: 86400000  # 24小时
+  
+  # 爬虫配置
+    google:
+      api-key: ${GOOGLE_API_KEY:}
+      serp-api-key: ${SERP_API_KEY:}
+    linkedin:
+      session-cookie: ${LINKEDIN_SESSION:}
+    python:
+      path: ${PYTHON_PATH:python}
+    script:
+      output-dir: ${CRAWLER_OUTPUT_DIR:/tmp}
+  
+  # 限流配置
+  rate-limit:
+    email-daily: 100
+    whatsapp-daily: 50
+    linkedin-daily: 100
