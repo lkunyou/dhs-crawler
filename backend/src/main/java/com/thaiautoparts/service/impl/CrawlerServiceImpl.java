@@ -343,6 +343,8 @@ public class CrawlerServiceImpl implements CrawlerService {
     protected void updateProgress(Long taskId, int progress) {
         CrawlerTask task = crawlerTaskMapper.selectById(taskId);
         if (task != null && "Running".equals(task.getStatus())) {
+            task.setKeywords(null);
+            task.setFilters(null);
             task.setProgress(Math.min(progress, 99));
             crawlerTaskMapper.updateById(task);
         }

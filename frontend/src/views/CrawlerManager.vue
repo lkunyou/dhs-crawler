@@ -148,9 +148,9 @@ async function startGoogleCrawl() {
     const task = {
       taskName: `Google搜索-${googleForm.keywords.join(',')}`,
       sourceType: 'Google_Search',
-      keywords: googleForm.keywords,
+      keywords: JSON.stringify(googleForm.keywords),
       targetCountry: googleForm.location,
-      filters: { maxResults: googleForm.maxResults }
+      filters:JSON.stringify({ maxResults: googleForm.maxResults })
     }
     
     const createResponse = await api.post('/crawler/task', task)
@@ -161,6 +161,7 @@ async function startGoogleCrawl() {
     
     loadTaskHistory()
   } catch (e) {
+    debugger
     ElMessage.error('启动失败: ' + (e.response?.data?.message || e.message))
   } finally {
     crawling.value = false
@@ -173,7 +174,7 @@ async function startMapsCrawl() {
     const task = {
       taskName: `Google Maps-${mapsForm.keywords.join(',')}-${mapsForm.city}`,
       sourceType: 'Google_Maps',
-      keywords: mapsForm.keywords,
+      keywords:JSON.stringify(mapsForm.keywords),
       targetCity: mapsForm.city,
       targetCountry: 'Thailand'
     }

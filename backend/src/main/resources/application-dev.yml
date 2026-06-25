@@ -6,11 +6,17 @@ spring:
     username: thai_auto_parts_crm
     password: ${DB_PASSWORD:tDdY8NX2xJ6HpdHz}
 
-# 日志配置
 logging:
   level:
+    # 你的业务代码Debug
     com.thaiautoparts: debug
     com.thaiautoparts.repository: debug
+    # 看Redis、Token过滤器相关日志
+    org.springframework.data.redis: DEBUG
+    # 全局Spring基础日志
+    org.springframework: INFO
+    # MyBatis底层日志，输出mapper绑定信息
+    org.apache.ibatis: DEBUG
 
 # 自定义配置
 app:

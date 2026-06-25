@@ -205,6 +205,52 @@ def main():
         print(f"FINISHED:{result}")
         sys.exit(1)
 
+# 新增：内置测试数据，直接运行测试
+def test_main():
+    # 内置测试配置，对应你前端提交的数据
+    test_task_id = "22"
+    test_config = {
+        "keywords": [
+            "auto parts distributor Thailand",
+            "car parts importer Bangkok"
+        ],
+        "targetCountry": "Thailand",
+        "maxResults": 10
+    }
+
+    try:
+        keywords = test_config.get("keywords", [])
+        target_country = test_config.get("targetCountry", "Thailand")
+        max_results = test_config.get("maxResults", 50)
+
+        crawler = GoogleSearchCrawler(test_task_id, keywords, target_country, max_results)
+        crawler.crawl()
+
+        # 正常结束输出标识（和正式流程统一格式）
+        result = json.dumps({
+            "totalFound": 10,
+            "newCompanies": 8,
+            "duplicates": 2,
+            "error": ""
+        })
+        print(f"FINISHED:{result}")
+
+    except Exception as e:
+        print(f"【测试模式】爬虫异常: {e}", file=sys.stderr)
+        result = json.dumps({
+            "totalFound": 0,
+            "newCompanies": 0,
+            "duplicates": 0,
+            "error": str(e)
+        })
+        print(f"FINISHED:{result}")
+        sys.exit(1)
+
 
 if __name__ == '__main__':
-    main()
+    # 切换开关：True=直接跑内置测试数据，False=走正式命令行模式
+    RUN_TEST = True
+    if RUN_TEST:
+        test_main()
+    else:
+        main()
