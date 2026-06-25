@@ -50,8 +50,6 @@ public class Company {
     private Integer websiteCompleteness;
     
     private String source;
-    private String sourceType;
-    private String description;
     
     @TableField("source_url")
     private String sourceUrl;

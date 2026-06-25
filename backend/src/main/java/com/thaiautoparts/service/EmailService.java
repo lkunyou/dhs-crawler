@@ -8,6 +8,7 @@ public interface EmailService {
     void sendEmail(Long companyId, Long contactId, Long templateId);
     void sendBatchEmail(List<Long> companyIds, Long templateId);
     List<EmailRecord> getEmailRecords(Long companyId);
+    List<EmailRecord> getAllEmailRecords();
     Map<String, Object> getEmailStats();
     void handleEmailOpened(String trackingId);
     void handleEmailReplied(String trackingId, String replyContent);

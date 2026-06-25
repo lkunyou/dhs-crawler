@@ -2,7 +2,10 @@
   <div class="login-container">
     <div class="login-box">
       <div class="login-header">
-        <h1>🇹🇭 泰国汽配CRM系统</h1>
+        <div class="logo-icon">
+          <el-icon :size="40"><DataBoard /></el-icon>
+        </div>
+        <h1>泰国汽配CRM系统</h1>
         <p>请登录您的账号</p>
       </div>
       
@@ -39,8 +42,6 @@
       </el-form>
       
       <div class="login-footer">
-        <span>默认用户名: admin</span>
-        <span>默认密码: password</span>
       </div>
     </div>
   </div>
@@ -51,6 +52,7 @@ import { ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/store/user'
+import { DataBoard } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -95,43 +97,55 @@ async function handleLogin() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(180deg, #eff6ff 0%, #f8fafc 100%);
 }
 
 .login-box {
-  width: 400px;
-  padding: 40px;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  width: 420px;
+  padding: 48px;
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e0f2fe;
+  box-shadow: 0 4px 20px rgba(37, 99, 235, 0.08);
 }
 
 .login-header {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 32px;
+}
+
+.logo-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
 }
 
 .login-header h1 {
-  margin: 0 0 10px 0;
-  font-size: 24px;
-  color: #303133;
+  margin: 0 0 8px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1e293b;
 }
 
 .login-header p {
   margin: 0;
-  color: #909399;
+  color: #64748b;
   font-size: 14px;
 }
 
 .login-footer {
-  margin-top: 20px;
+  margin-top: 24px;
   text-align: center;
 }
 
 .login-footer span {
-  display: block;
   font-size: 12px;
-  color: #909399;
-  margin-top: 5px;
+  color: #94a3b8;
 }
 </style>

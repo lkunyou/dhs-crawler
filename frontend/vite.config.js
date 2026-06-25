@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5173,
       proxy: {
-        '/dhs-crawler/api': {
+        '/api': {
           target: apiTarget,
           changeOrigin: true,
         }

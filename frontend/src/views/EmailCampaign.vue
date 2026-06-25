@@ -4,6 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>邮件营销活动</span>
+          <el-button type="primary" @click="refreshRecords" size="small">刷新记录</el-button>
         </div>
       </template>
 
@@ -11,14 +12,35 @@
         <el-col :span="16">
           <el-card>
             <template #header>发送邮件</template>
-            <BaseForm :model-value="emailForm" label-width="100px">
-              <FormField type="select" label="目标客户" prop="targetType" v-model="emailForm.targetType" :options="targetTypeOptions" @change="handleTargetTypeChange" />
+            <el-form :model="emailForm" label-width="100px">
+              <el-form-item label="目标客户" required>
+                <el-select v-model="emailForm.targetType" @change="handleTargetTypeChange" placeholder="选择发送方式">
+                  <el-option label="单个客户" value="single" />
+                  <el-option label="客户等级筛选" value="grade" />
+                  <el-option label="全部客户" value="all" />
+                </el-select>
+              </el-form-item>
               
-              <FormField v-if="emailForm.targetType === 'single'" type="select" label="选择客户" prop="companyId" v-model="emailForm.companyId" :options="companyOptions" :filterable="true" placeholder="搜索客户" />
+              <el-form-item v-if="emailForm.targetType === 'single'" label="选择客户" required>
+                <el-select v-model="emailForm.companyId" filterable placeholder="搜索客户" style="width: 100%">
+                  <el-option v-for="c in companies" :key="c.id" :label="c.companyName" :value="c.id" />
+                </el-select>
+              </el-form-item>
               
-              <FormField v-if="emailForm.targetType === 'grade'" type="select" label="客户等级" prop="gradeFilter" v-model="emailForm.gradeFilter" :options="gradeOptions" />
+              <el-form-item v-if="emailForm.targetType === 'grade'" label="客户等级">
+                <el-select v-model="emailForm.gradeFilter" placeholder="选择等级">
+                  <el-option label="S级" value="S" />
+                  <el-option label="A级" value="A" />
+                  <el-option label="B级" value="B" />
+                  <el-option label="S/A级" value="SA" />
+                </el-select>
+              </el-form-item>
               
-              <FormField type="select" label="邮件模板" prop="templateId" v-model="emailForm.templateId" :options="templateOptions" @change="handleTemplateChange" />
+              <el-form-item label="邮件模板" required>
+                <el-select v-model="emailForm.templateId" @change="handleTemplateChange" placeholder="选择模板" style="width: 100%">
+                  <el-option v-for="t in templates" :key="t.id" :label="t.templateName" :value="t.id" />
+                </el-select>
+              </el-form-item>
               
               <el-form-item label="预览">
                 <div class="email-preview" v-html="emailPreview"></div>
@@ -26,9 +48,9 @@
               
               <el-form-item>
                 <el-button type="primary" @click="handleSend" :loading="sending">发送邮件</el-button>
-                <el-button @click="handleSchedule">定时发送</el-button>
+                <el-button @click="handleBatchSend" :loading="sending" v-if="emailForm.targetType !== 'single'">批量发送</el-button>
               </el-form-item>
-            </BaseForm>
+            </el-form>
           </el-card>
         </el-col>
 
@@ -50,7 +72,18 @@
 
       <el-card style="margin-top: 20px">
         <template #header>发送记录</template>
-        <BaseTable :data="sendRecords" :columns="sendRecordColumns" :show-pagination="false" />
+        <el-table :data="sendRecords" border>
+          <el-table-column prop="recipientEmail" label="收件人" width="200" />
+          <el-table-column prop="subject" label="主题" min-width="200" />
+          <el-table-column prop="status" label="状态" width="120">
+            <template #default="{ row }">
+              <el-tag :type="getRecordStatusType(row.status)">{{ getRecordStatusLabel(row.status) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="sentAt" label="发送时间" width="180" />
+          <el-table-column prop="openedAt" label="打开时间" width="180" />
+          <el-table-column prop="repliedAt" label="回复时间" width="180" />
+        </el-table>
       </el-card>
     </el-card>
   </div>
@@ -60,7 +93,8 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { BaseForm, BaseTable, FormField } from '@/components'
+import { sendEmail, sendBatchEmail, getAllEmailRecords } from '@/api/email'
+import { getCompanies } from '@/api/company'
 
 const route = useRoute()
 const sending = ref(false)
@@ -72,28 +106,6 @@ const emailForm = reactive({
   templateId: null
 })
 
-const targetTypeOptions = [
-  { label: '单个客户', value: 'single' },
-  { label: '客户等级筛选', value: 'grade' },
-  { label: '全部S/A级客户', value: 'high_grade' }
-]
-
-const gradeOptions = [
-  { label: 'S级', value: 'S' },
-  { label: 'A级', value: 'A' },
-  { label: 'B级', value: 'B' },
-  { label: 'S/A级', value: 'SA' }
-]
-
-const sendRecordColumns = [
-  { prop: 'recipientEmail', label: '收件人', width: 200 },
-  { prop: 'subject', label: '主题', minWidth: 200 },
-  { prop: 'status', label: '状态', width: 100, type: 'tag', tagType: (row) => getRecordStatusType(row.status), tagLabel: (row) => getRecordStatusLabel(row.status) },
-  { prop: 'sentAt', label: '发送时间', width: 180 },
-  { prop: 'openedAt', label: '打开时间', width: 180 },
-  { prop: 'repliedAt', label: '回复时间', width: 180 }
-]
-
 const emailPreview = ref('')
 const companies = ref([])
 const templates = ref([
@@ -104,19 +116,43 @@ const templates = ref([
   { id: 5, templateName: 'Day15-促销提醒', subject: 'Limited-Time Promotion', category: 'Promotion', daySequence: 15 }
 ])
 
-const companyOptions = computed(() => companies.value.map(c => ({ label: c.companyName, value: c.id })))
-const templateOptions = computed(() => templates.value.map(t => ({ label: t.templateName, value: t.id })))
-
 const sendRecords = ref([])
 
-onMounted(() => {
+onMounted(async () => {
   if (route.query.companyId) {
     emailForm.companyId = parseInt(route.query.companyId)
     emailForm.targetType = 'single'
   }
+  await loadCompanies()
+  await loadRecords()
 })
 
-function handleTargetTypeChange() {}
+async function loadCompanies() {
+  try {
+    const res = await getCompanies()
+    companies.value = res.data
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+async function loadRecords() {
+  try {
+    const res = await getAllEmailRecords()
+    sendRecords.value = res.data
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+function refreshRecords() {
+  loadRecords()
+}
+
+function handleTargetTypeChange() {
+  emailForm.companyId = null
+  emailForm.gradeFilter = ''
+}
 
 function handleTemplateChange() {
   const template = templates.value.find(t => t.id === emailForm.templateId)
@@ -131,18 +167,61 @@ async function handleSend() {
     return
   }
   
+  if (emailForm.targetType === 'single' && !emailForm.companyId) {
+    ElMessage.warning('请选择客户')
+    return
+  }
+  
   sending.value = true
   try {
+    await sendEmail({
+      companyId: emailForm.companyId,
+      contactId: null,
+      templateId: emailForm.templateId
+    })
     ElMessage.success('邮件发送任务已创建')
+    await loadRecords()
   } catch (e) {
+    ElMessage.error('发送失败')
     console.error(e)
   } finally {
     sending.value = false
   }
 }
 
-function handleSchedule() {
-  ElMessage.info('定时发送功能开发中')
+async function handleBatchSend() {
+  if (!emailForm.templateId) {
+    ElMessage.warning('请选择邮件模板')
+    return
+  }
+  
+  let companyIds = []
+  if (emailForm.targetType === 'all') {
+    companyIds = companies.value.map(c => c.id)
+  } else if (emailForm.targetType === 'grade') {
+    const grades = emailForm.gradeFilter === 'SA' ? ['S', 'A'] : [emailForm.gradeFilter]
+    companyIds = companies.value.filter(c => grades.includes(c.grade)).map(c => c.id)
+  }
+  
+  if (companyIds.length === 0) {
+    ElMessage.warning('没有符合条件的客户')
+    return
+  }
+  
+  sending.value = true
+  try {
+    await sendBatchEmail({
+      companyIds,
+      templateId: emailForm.templateId
+    })
+    ElMessage.success(`已创建批量发送任务，将发送给 ${companyIds.length} 个客户`)
+    await loadRecords()
+  } catch (e) {
+    ElMessage.error('批量发送失败')
+    console.error(e)
+  } finally {
+    sending.value = false
+  }
 }
 
 function getRecordStatusType(status) {
@@ -162,14 +241,17 @@ function getRecordStatusLabel(status) {
 }
 
 .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   font-weight: bold;
 }
 
 .email-preview {
-  border: 1px solid #dcdfe6;
+  border: 1px solid #e8f4f8;
   padding: 15px;
-  border-radius: 4px;
-  background: #f5f7fa;
-  min-height: 200px;
+  border-radius: 8px;
+  background: #f8fafc;
+  min-height: 150px;
 }
 </style>

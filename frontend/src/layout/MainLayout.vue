@@ -3,55 +3,29 @@
     <el-header class="main-header">
       <div class="header-left">
         <div class="logo">
-          <h2>🇹🇭 泰国汽配CRM</h2>
+          <el-icon :size="20"><DataBoard /></el-icon>
+          <span>泰国汽配CRM</span>
         </div>
-        <el-menu
-          :default-active="activeMenu"
-          router
-          mode="horizontal"
-          background-color="#304156"
-          text-color="#bfcbd9"
-          active-text-color="#409EFF"
-          class="top-menu"
-        >
-          <el-menu-item index="/dashboard">
-            <el-icon><DataBoard /></el-icon>
-            <span>数据看板</span>
-          </el-menu-item>
-          <el-menu-item index="/companies">
-            <el-icon><UserFilled /></el-icon>
-            <span>客户管理</span>
-          </el-menu-item>
-          <el-menu-item index="/email-campaign">
-            <el-icon><Message /></el-icon>
-            <span>邮件营销</span>
-          </el-menu-item>
-          <el-menu-item index="/email-templates">
-            <el-icon><Document /></el-icon>
-            <span>邮件模板</span>
-          </el-menu-item>
-          <el-menu-item index="/whatsapp">
-            <el-icon><ChatDotRound /></el-icon>
-            <span>WhatsApp</span>
-          </el-menu-item>
-          <el-menu-item index="/crawler">
-            <el-icon><Search /></el-icon>
-            <span>爬虫管理</span>
-          </el-menu-item>
-          <el-menu-item index="/analytics">
-            <el-icon><TrendCharts /></el-icon>
-            <span>数据分析</span>
-          </el-menu-item>
-        </el-menu>
+        <nav class="top-nav">
+          <router-link 
+            v-for="item in menuItems" 
+            :key="item.path" 
+            :to="item.path"
+            :class="['nav-item', { active: activeMenu === item.path }]"
+          >
+            <el-icon :size="16"><component :is="item.icon" /></el-icon>
+            <span>{{ item.label }}</span>
+          </router-link>
+        </nav>
       </div>
       <div class="header-right">
-        <el-badge :value="12" class="item">
+        <el-badge :value="12" class="badge">
           <el-icon :size="18"><Bell /></el-icon>
         </el-badge>
         <el-dropdown @command="handleCommand">
           <span class="user-info">
-            <el-icon><User /></el-icon>
-            {{ userStore.username || '管理员' }}
+            <el-icon :size="16"><User /></el-icon>
+            <span>{{ userStore.username || '管理员' }}</span>
           </span>
           <template #dropdown>
             <el-dropdown-menu>
@@ -70,16 +44,39 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, markRaw } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/store/user'
+import { 
+  DataBoard, 
+  UserFilled, 
+  MessageBox,
+  Message, 
+  Document, 
+  ChatDotRound, 
+  Search, 
+  TrendCharts,
+  Bell,
+  User
+} from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 
 const activeMenu = computed(() => route.path)
+
+const menuItems = [
+  { path: '/dashboard', label: '数据看板', icon: markRaw(DataBoard) },
+  { path: '/companies', label: '客户管理', icon: markRaw(UserFilled) },
+  { path: '/inbox', label: '收件箱', icon: markRaw(MessageBox) },
+  { path: '/email-campaign', label: '邮件营销', icon: markRaw(Message) },
+  { path: '/email-templates', label: '邮件模板', icon: markRaw(Document) },
+  { path: '/whatsapp', label: 'WhatsApp', icon: markRaw(ChatDotRound) },
+  { path: '/crawler', label: '爬虫管理', icon: markRaw(Search) },
+  { path: '/analytics', label: '数据分析', icon: markRaw(TrendCharts) }
+]
 
 function handleCommand(command) {
   if (command === 'logout') {
@@ -96,78 +93,105 @@ function handleCommand(command) {
 }
 
 .main-header {
-  background-color: #304156;
-  height: 40px;
-  padding: 0 15px;
+  background-color: #ffffff;
+  height: 52px;
+  padding: 0 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
+  border-bottom: 1px solid #e8f4f8;
 }
 
 .header-left {
   display: flex;
   align-items: center;
   flex: 1;
+  gap: 24px;
 }
 
 .logo {
   display: flex;
   align-items: center;
-  margin-right: 15px;
+  gap: 8px;
   flex-shrink: 0;
 }
 
-.logo h2 {
-  color: #fff;
-  font-size: 12px;
-  margin: 0;
-  white-space: nowrap;
+.logo span {
+  color: #2563eb;
+  font-size: 14px;
+  font-weight: 600;
 }
 
-.top-menu {
-  border-bottom: none !important;
-  background-color: transparent !important;
+.logo :deep(.el-icon) {
+  color: #2563eb;
 }
 
-:deep(.el-menu--horizontal) {
-  border-bottom: none !important;
-  height: 40px;
-}
-
-:deep(.el-menu--horizontal > .el-menu-item) {
-  height: 40px !important;
-  line-height: 40px !important;
-  font-size: 12px;
-  border-bottom: none !important;
+.top-nav {
   display: flex;
   align-items: center;
-  margin: 0;
+  gap: 8px;
 }
 
-:deep(.el-menu--horizontal > .el-menu-item.is-active) {
-  border-bottom: 2px solid #409EFF !important;
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  color: #64748b;
+  text-decoration: none;
+  font-size: 13px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.nav-item:hover {
+  color: #2563eb;
+  background-color: #eff6ff;
+}
+
+.nav-item.active {
+  color: #2563eb;
+  background-color: #eff6ff;
+  font-weight: 500;
 }
 
 .header-right {
   display: flex;
   align-items: center;
   gap: 12px;
-  color: #bfcbd9;
+  color: #64748b;
+}
+
+.badge {
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  transition: background-color 0.15s ease;
+}
+
+.badge:hover {
+  background-color: #f1f5f9;
 }
 
 .user-info {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   cursor: pointer;
-  font-size: 10px;
-  color: #bfcbd9;
+  font-size: 13px;
+  color: #64748b;
+  padding: 6px 10px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.user-info:hover {
+  color: #2563eb;
+  background-color: #eff6ff;
 }
 
 .el-main {
   padding: 0;
-  background-color: #f0f2f5;
+  background-color: #f8fafc;
 }
 </style>

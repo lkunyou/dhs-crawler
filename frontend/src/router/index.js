@@ -36,6 +36,12 @@ const routes = [
         meta: { title: '客户详情' }
       },
       {
+        path: 'inbox',
+        name: 'Inbox',
+        component: () => import('@/views/Inbox.vue'),
+        meta: { title: '收件箱' }
+      },
+      {
         path: 'email-campaign',
         name: 'EmailCampaign',
         component: () => import('@/views/EmailCampaign.vue'),

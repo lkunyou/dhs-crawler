@@ -2,6 +2,8 @@ package com.thaiautoparts.controller;
 
 import com.thaiautoparts.dto.Result;
 import com.thaiautoparts.entity.EmailRecord;
+import com.thaiautoparts.entity.InboundEmail;
+import com.thaiautoparts.service.EmailReceiverService;
 import com.thaiautoparts.service.EmailService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +18,7 @@ import java.util.Map;
 public class EmailController {
 
     private final EmailService emailService;
+    private final EmailReceiverService emailReceiverService;
 
     @PostMapping("/send")
     public Result<Void> sendEmail(@RequestBody SendEmailRequest request) {
@@ -34,6 +37,11 @@ public class EmailController {
         return Result.success(emailService.getEmailRecords(companyId));
     }
 
+    @GetMapping("/records")
+    public Result<List<EmailRecord>> getAllRecords() {
+        return Result.success(emailService.getAllEmailRecords());
+    }
+
     @GetMapping("/stats")
     public Result<Map<String, Object>> getStats() {
         return Result.success(emailService.getEmailStats());
@@ -43,6 +51,55 @@ public class EmailController {
     public Result<Void> trackOpen(@RequestParam String trackingId) {
         emailService.handleEmailOpened(trackingId);
         return Result.success();
+    }
+
+    @GetMapping("/inbox")
+    public Result<List<InboundEmail>> getInbox() {
+        return Result.success(emailReceiverService.getInbox());
+    }
+
+    @GetMapping("/inbox/unread")
+    public Result<List<InboundEmail>> getUnreadEmails() {
+        return Result.success(emailReceiverService.getUnreadEmails());
+    }
+
+    @GetMapping("/inbox/count")
+    public Result<Integer> getUnreadCount() {
+        return Result.success(emailReceiverService.getUnreadCount());
+    }
+
+    @GetMapping("/inbox/{id}")
+    public Result<InboundEmail> getEmailById(@PathVariable Long id) {
+        InboundEmail email = emailReceiverService.getEmailById(id);
+        if (email != null) {
+            emailReceiverService.markAsRead(id);
+            return Result.success(email);
+        }
+        return Result.error("邮件不存在");
+    }
+
+    @PostMapping("/inbox/{id}/read")
+    public Result<Void> markAsRead(@PathVariable Long id) {
+        emailReceiverService.markAsRead(id);
+        return Result.success();
+    }
+
+    @PostMapping("/inbox/{id}/star")
+    public Result<Void> markAsStarred(@PathVariable Long id, @RequestParam boolean starred) {
+        emailReceiverService.markAsStarred(id, starred);
+        return Result.success();
+    }
+
+    @DeleteMapping("/inbox/{id}")
+    public Result<Void> deleteEmail(@PathVariable Long id) {
+        emailReceiverService.deleteEmail(id);
+        return Result.success();
+    }
+
+    @PostMapping("/inbox/fetch")
+    public Result<String> fetchEmails() {
+        emailReceiverService.fetchEmails();
+        return Result.success("邮件获取任务已启动");
     }
 
     @Data

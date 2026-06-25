@@ -1,93 +1,73 @@
 <template>
   <div class="dashboard">
-    <el-row :gutter="20" class="stats-row">
+    <el-row :gutter="16" class="stats-row">
       <el-col :span="6">
-        <el-card shadow="hover">
-          <div class="stat-card">
-            <div class="stat-icon" style="background: #409EFF">
-              <el-icon :size="30"><UserFilled /></el-icon>
-            </div>
-            <div class="stat-info">
-              <div class="stat-value">{{ stats.totalCompanies }}</div>
-              <div class="stat-label">总客户数</div>
-            </div>
+        <div class="stat-card">
+          <div class="stat-icon">
+            <el-icon :size="24"><UserFilled /></el-icon>
           </div>
-        </el-card>
+          <div class="stat-info">
+            <div class="stat-value">{{ stats.totalCompanies }}</div>
+            <div class="stat-label">总客户数</div>
+          </div>
+        </div>
       </el-col>
       <el-col :span="6">
-        <el-card shadow="hover">
-          <div class="stat-card">
-            <div class="stat-icon" style="background: #67C23A">
-              <el-icon :size="30"><Message /></el-icon>
-            </div>
-            <div class="stat-info">
-              <div class="stat-value">{{ stats.emailsSent }}</div>
-              <div class="stat-label">邮件已发送</div>
-            </div>
+        <div class="stat-card">
+          <div class="stat-icon">
+            <el-icon :size="24"><Message /></el-icon>
           </div>
-        </el-card>
+          <div class="stat-info">
+            <div class="stat-value">{{ stats.emailsSent }}</div>
+            <div class="stat-label">邮件已发送</div>
+          </div>
+        </div>
       </el-col>
       <el-col :span="6">
-        <el-card shadow="hover">
-          <div class="stat-card">
-            <div class="stat-icon" style="background: #E6A23C">
-              <el-icon :size="30"><ChatDotRound /></el-icon>
-            </div>
-            <div class="stat-info">
-              <div class="stat-value">{{ stats.whatsappSent }}</div>
-              <div class="stat-label">WhatsApp发送</div>
-            </div>
+        <div class="stat-card">
+          <div class="stat-icon">
+            <el-icon :size="24"><ChatDotRound /></el-icon>
           </div>
-        </el-card>
+          <div class="stat-info">
+            <div class="stat-value">{{ stats.whatsappSent }}</div>
+            <div class="stat-label">WhatsApp发送</div>
+          </div>
+        </div>
       </el-col>
       <el-col :span="6">
-        <el-card shadow="hover">
-          <div class="stat-card">
-            <div class="stat-icon" style="background: #F56C6C">
-              <el-icon :size="30"><SuccessFilled /></el-icon>
-            </div>
-            <div class="stat-info">
-              <div class="stat-value">{{ stats.replies }}</div>
-              <div class="stat-label">客户回复</div>
-            </div>
+        <div class="stat-card">
+          <div class="stat-icon">
+            <el-icon :size="24"><SuccessFilled /></el-icon>
           </div>
-        </el-card>
+          <div class="stat-info">
+            <div class="stat-value">{{ stats.replies }}</div>
+            <div class="stat-label">客户回复</div>
+          </div>
+        </div>
       </el-col>
     </el-row>
 
-    <el-row :gutter="20" class="chart-row">
+    <el-row :gutter="16" class="chart-row">
       <el-col :span="12">
-        <el-card>
-          <template #header>
-            <div class="card-header">
-              <span>客户等级分布</span>
-            </div>
-          </template>
-          <div ref="gradeChartRef" style="height: 300px"></div>
-        </el-card>
+        <div class="chart-card">
+          <div class="card-header">客户等级分布</div>
+          <div ref="gradeChartRef" class="chart-content"></div>
+        </div>
       </el-col>
       <el-col :span="12">
-        <el-card>
-          <template #header>
-            <div class="card-header">
-              <span>客户来源分布</span>
-            </div>
-          </template>
-          <div ref="sourceChartRef" style="height: 300px"></div>
-        </el-card>
+        <div class="chart-card">
+          <div class="card-header">客户来源分布</div>
+          <div ref="sourceChartRef" class="chart-content"></div>
+        </div>
       </el-col>
     </el-row>
 
-    <el-row :gutter="20">
+    <el-row :gutter="16">
       <el-col :span="24">
-        <el-card>
-          <template #header>
-            <div class="card-header">
-              <span>客户转化漏斗</span>
-            </div>
-          </template>
-          <div ref="funnelChartRef" style="height: 300px"></div>
-        </el-card>
+        <div class="chart-card">
+          <div class="card-header">客户转化漏斗</div>
+          <div ref="funnelChartRef" class="chart-content"></div>
+        </div>
       </el-col>
     </el-row>
   </div>
@@ -133,62 +113,73 @@ function initCharts() {
   // 客户等级饼图
   const gradeChart = echarts.init(gradeChartRef.value)
   gradeChart.setOption({
-    tooltip: { trigger: 'item' },
-    legend: { bottom: '5%' },
+    tooltip: { trigger: 'item', backgroundColor: '#fff', borderColor: '#e0f2fe', textStyle: { color: '#1e293b' } },
+    legend: { bottom: '5%', textStyle: { color: '#64748b', fontSize: 12 } },
     series: [{
       name: '客户等级',
       type: 'pie',
-      radius: ['40%', '70%'],
+      radius: ['45%', '70%'],
       data: [
-        { value: 15, name: 'S级 - 必须开发', itemStyle: { color: '#F56C6C' } },
-        { value: 35, name: 'A级 - 重点跟进', itemStyle: { color: '#E6A23C' } },
-        { value: 80, name: 'B级 - 自动培育', itemStyle: { color: '#409EFF' } },
-        { value: 120, name: 'C级 - 丢弃', itemStyle: { color: '#909399' } }
-      ]
+        { value: 15, name: 'S级 - 必须开发', itemStyle: { color: '#2563eb' } },
+        { value: 35, name: 'A级 - 重点跟进', itemStyle: { color: '#3b82f6' } },
+        { value: 80, name: 'B级 - 自动培育', itemStyle: { color: '#60a5fa' } },
+        { value: 120, name: 'C级 - 丢弃', itemStyle: { color: '#bfdbfe' } }
+      ],
+      label: { color: '#1e293b', fontSize: 11 }
     }]
   })
 
   // 客户来源柱状图
   const sourceChart = echarts.init(sourceChartRef.value)
   sourceChart.setOption({
-    tooltip: { trigger: 'axis' },
+    tooltip: { trigger: 'axis', backgroundColor: '#fff', borderColor: '#e0f2fe', textStyle: { color: '#1e293b' } },
+    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
     xAxis: {
       type: 'category',
-      data: ['Google', 'LinkedIn', 'B2B平台', '行业目录', '手动录入']
+      data: ['Google', 'LinkedIn', 'B2B平台', '行业目录', '手动录入'],
+      axisLine: { lineStyle: { color: '#e2e8f0' } },
+      axisLabel: { color: '#64748b', fontSize: 11 }
     },
-    yAxis: { type: 'value' },
+    yAxis: { 
+      type: 'value',
+      axisLine: { show: false },
+      axisTick: { show: false },
+      splitLine: { lineStyle: { color: '#f1f5f9' } },
+      axisLabel: { color: '#64748b', fontSize: 11 }
+    },
     series: [{
       data: [120, 85, 45, 30, 20],
       type: 'bar',
-      itemStyle: { color: '#409EFF' }
+      itemStyle: { color: '#3b82f6', borderRadius: [4, 4, 0, 0] }
     }]
   })
 
   // 转化漏斗图
   const funnelChart = echarts.init(funnelChartRef.value)
   funnelChart.setOption({
-    tooltip: { trigger: 'item' },
+    tooltip: { trigger: 'item', backgroundColor: '#fff', borderColor: '#e0f2fe', textStyle: { color: '#1e293b' } },
     series: [{
       name: '转化漏斗',
       type: 'funnel',
-      left: '10%',
-      top: 20,
-      bottom: 20,
-      width: '80%',
+      left: '15%',
+      top: 30,
+      bottom: 30,
+      width: '70%',
       min: 0,
       max: 500,
       minSize: '0%',
       maxSize: '100%',
       sort: 'descending',
-      gap: 2,
-      label: { show: true, position: 'inside' },
+      gap: 1,
+      label: { show: true, position: 'inside', color: '#fff', fontSize: 11 },
+      itemStyle: { borderColor: '#fff', borderWidth: 1 },
       data: [
-        { value: 500, name: 'New Lead' },
-        { value: 350, name: 'Contacted' },
-        { value: 120, name: 'Replied' },
-        { value: 45, name: 'Quoted' },
-        { value: 20, name: 'Negotiation' },
-        { value: 8, name: 'Won' }
+        { value: 500, name: '新线索', itemStyle: { color: '#1d4ed8' } },
+        { value: 350, name: '已联系', itemStyle: { color: '#2563eb' } },
+        { value: 120, name: '已回复', itemStyle: { color: '#3b82f6' } },
+        { value: 45, name: '已报价', itemStyle: { color: '#60a5fa' } },
+        { value: 20, name: '洽谈中', itemStyle: { color: '#93c5fd' } },
+        { value: 8, name: '已成交', itemStyle: { color: '#bfdbfe' } }
       ]
     }]
   })
@@ -197,27 +188,40 @@ function initCharts() {
 
 <style scoped>
 .dashboard {
-  padding: 20px;
+  padding: 24px;
+  background-color: #f8fafc;
+  min-height: 100%;
 }
 
 .stats-row {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .stat-card {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 16px;
+  background: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+  border-color: #bfdbfe;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
 }
 
 .stat-icon {
-  width: 60px;
-  height: 60px;
+  width: 48px;
+  height: 48px;
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: #2563eb;
+  background-color: #eff6ff;
 }
 
 .stat-info {
@@ -225,21 +229,39 @@ function initCharts() {
 }
 
 .stat-value {
-  font-size: 28px;
-  font-weight: bold;
-  color: #303133;
+  font-size: 24px;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.2;
 }
 
 .stat-label {
-  font-size: 14px;
-  color: #909399;
-  margin-top: 5px;
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.chart-row {
+  margin-bottom: 24px;
+}
+
+.chart-card {
+  background: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
 }
 
 .card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-weight: bold;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.chart-content {
+  height: 280px;
 }
 </style>

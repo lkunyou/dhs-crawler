@@ -573,3 +573,30 @@ INSERT INTO `p_email_template` (`template_name`, `subject`, `content`, `language
 <p>Please reply to this email or contact me on WhatsApp [Number] to take advantage of this offer.</p>
 <p>Best regards,<br/>[Your Name]</p>',
 'EN', 'Promotion', 15, TRUE);
+
+-- ============================================
+-- 收件箱表 (接收的邮件)
+-- ============================================
+CREATE TABLE IF NOT EXISTS `p_inbound_email` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
+    `company_id` BIGINT COMMENT '关联公司ID',
+    `contact_id` BIGINT COMMENT '关联联系人ID',
+    `from_email` VARCHAR(100) NOT NULL COMMENT '发件人邮箱',
+    `from_name` VARCHAR(200) COMMENT '发件人姓名',
+    `to_email` VARCHAR(100) NOT NULL COMMENT '收件人邮箱',
+    `subject` VARCHAR(300) COMMENT '邮件主题',
+    `content` TEXT COMMENT '邮件内容(HTML)',
+    `message_id` VARCHAR(200) COMMENT '邮件服务器Message-ID',
+    `in_reply_to` VARCHAR(200) COMMENT '回复的原始邮件Message-ID',
+    `is_read` BOOLEAN DEFAULT FALSE COMMENT '是否已读',
+    `is_starred` BOOLEAN DEFAULT FALSE COMMENT '是否标星',
+    `attachments` TEXT COMMENT '附件列表(JSON)',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '接收时间',
+    
+    FOREIGN KEY (`company_id`) REFERENCES `p_company`(`id`) ON DELETE SET NULL,
+    INDEX `idx_company_id` (`company_id`),
+    INDEX `idx_from_email` (`from_email`),
+    INDEX `idx_is_read` (`is_read`),
+    INDEX `idx_is_starred` (`is_starred`),
+    INDEX `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='收件箱表';
