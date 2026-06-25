@@ -376,6 +376,62 @@ CREATE TABLE `p_crawler_task` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='爬虫任务表';
 
 -- ============================================
+-- 10.1 爬虫抓取结果表 (待确认的原始数据)
+-- ============================================
+CREATE TABLE `p_crawler_result` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `task_id` BIGINT NOT NULL COMMENT '爬虫任务ID',
+    `source_type` ENUM('Google_Search', 'Google_Maps', 'LinkedIn', 'B2B_Platform', 'Industry_Directory') COMMENT '数据源',
+    
+    -- 公司基本信息
+    `company_name` VARCHAR(255) NOT NULL COMMENT '公司名称',
+    `company_name_th` VARCHAR(255) COMMENT '公司名称(泰文)',
+    `company_name_en` VARCHAR(255) COMMENT '公司名称(英文)',
+    `website` VARCHAR(500) COMMENT '官网URL',
+    `address` VARCHAR(500) COMMENT '地址',
+    `city` VARCHAR(100) COMMENT '城市',
+    `province` VARCHAR(100) COMMENT '省份',
+    `phone` VARCHAR(50) COMMENT '电话',
+    `whatsapp` VARCHAR(50) COMMENT 'WhatsApp号码',
+    `email` VARCHAR(100) COMMENT '邮箱',
+    
+    -- 业务信息
+    `company_type` VARCHAR(100) COMMENT '公司类型',
+    `business_description` TEXT COMMENT '业务描述',
+    `product_categories` JSON COMMENT '产品类别',
+    `employee_count` VARCHAR(50) COMMENT '员工规模',
+    
+    -- 来源信息
+    `source_url` VARCHAR(500) COMMENT '来源URL',
+    `search_keyword` VARCHAR(200) COMMENT '搜索关键词',
+    `raw_data` JSON COMMENT '原始数据JSON',
+    
+    -- 状态管理
+    `status` ENUM('Pending', 'Confirmed', 'Synced', 'Rejected', 'Duplicate') DEFAULT 'Pending' COMMENT '状态',
+    `synced_company_id` BIGINT COMMENT '同步后的公司ID',
+    `duplicate_of` BIGINT COMMENT '重复指向的公司ID',
+    `rejection_reason` VARCHAR(500) COMMENT '拒绝原因',
+    
+    -- 评分
+    `lead_score` INT DEFAULT 0 COMMENT '客户评分(0-100)',
+    `lead_grade` ENUM('S', 'A', 'B', 'C') DEFAULT 'C' COMMENT '客户等级',
+    `is_auto_parts_core` BOOLEAN DEFAULT FALSE COMMENT '是否汽配核心业务',
+    `is_importer_distributor` BOOLEAN DEFAULT FALSE COMMENT '是否进口/分销商',
+    
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `confirmed_at` DATETIME COMMENT '确认时间',
+    `synced_at` DATETIME COMMENT '同步时间',
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (`task_id`) REFERENCES `p_crawler_task`(`id`),
+    INDEX `idx_task_id` (`task_id`),
+    INDEX `idx_status` (`status`),
+    INDEX `idx_source_type` (`source_type`),
+    INDEX `idx_company_name` (`company_name`),
+    INDEX `idx_lead_grade` (`lead_grade`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='爬虫抓取结果表(待确认)';
+
+-- ============================================
 -- 11. 数据统计表 (每日汇总)
 -- ============================================
 CREATE TABLE `p_daily_stats` (

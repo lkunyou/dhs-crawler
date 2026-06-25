@@ -7,11 +7,12 @@ spring:
   application:
     name: thai-auto-parts-crm
   
+  # 默认激活开发环境
+  profiles:
+    active: dev
+  
   # 数据源配置
   datasource:
-    url: jdbc:mysql://8.163.58.109:3306/thai_auto_parts_crm?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-    username: thai_auto_parts_crm
-    password: ${DB_PASSWORD:tDdY8NX2xJ6HpdHz}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 20
@@ -79,9 +80,6 @@ mybatis-plus:
 
 # 日志配置
 logging:
-  level:
-    com.thaiautoparts: debug
-    com.thaiautoparts.repository: debug
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
@@ -93,6 +91,7 @@ app:
     expiration: 86400000  # 24小时
   
   # 爬虫配置
+  crawler:
     google:
       api-key: ${GOOGLE_API_KEY:}
       serp-api-key: ${SERP_API_KEY:}
@@ -100,8 +99,6 @@ app:
       session-cookie: ${LINKEDIN_SESSION:}
     python:
       path: ${PYTHON_PATH:python}
-    script:
-      output-dir: ${CRAWLER_OUTPUT_DIR:/tmp}
   
   # 限流配置
   rate-limit:

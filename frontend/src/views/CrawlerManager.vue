@@ -148,9 +148,9 @@ async function startGoogleCrawl() {
     const task = {
       taskName: `Google搜索-${googleForm.keywords.join(',')}`,
       sourceType: 'Google_Search',
-      keywords: JSON.stringify(googleForm.keywords),
+      keywords: googleForm.keywords,
       targetCountry: googleForm.location,
-      filters: JSON.stringify({ maxResults: googleForm.maxResults })
+      filters: { maxResults: googleForm.maxResults }
     }
     
     const createResponse = await api.post('/crawler/task', task)
@@ -173,7 +173,7 @@ async function startMapsCrawl() {
     const task = {
       taskName: `Google Maps-${mapsForm.keywords.join(',')}-${mapsForm.city}`,
       sourceType: 'Google_Maps',
-      keywords: JSON.stringify(mapsForm.keywords),
+      keywords: mapsForm.keywords,
       targetCity: mapsForm.city,
       targetCountry: 'Thailand'
     }
@@ -198,7 +198,7 @@ async function startLinkedInCrawl() {
     const task = {
       taskName: `LinkedIn-${linkedinForm.titles.join(',')}`,
       sourceType: 'LinkedIn',
-      keywords: JSON.stringify(linkedinForm.titles),
+      keywords: linkedinForm.titles,
       filters: JSON.stringify({ companyKeywords: linkedinForm.companyKeywords }),
       targetCountry: 'Thailand'
     }

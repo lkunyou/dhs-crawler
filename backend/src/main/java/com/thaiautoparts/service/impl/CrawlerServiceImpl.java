@@ -4,18 +4,23 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.thaiautoparts.entity.Company;
+import com.thaiautoparts.entity.CrawlerResult;
 import com.thaiautoparts.entity.CrawlerTask;
-import com.thaiautoparts.repository.CompanyMapper;
+import com.thaiautoparts.event.CrawlerTaskStartedEvent;
+import com.thaiautoparts.repository.CrawlerResultMapper;
 import com.thaiautoparts.repository.CrawlerTaskMapper;
+import com.thaiautoparts.service.CrawlerResultService;
 import com.thaiautoparts.service.CrawlerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -34,13 +39,14 @@ import java.util.UUID;
 public class CrawlerServiceImpl implements CrawlerService {
 
     private final CrawlerTaskMapper crawlerTaskMapper;
-    private final CompanyMapper companyMapper;
+    private final CrawlerResultMapper crawlerResultMapper;
     private final ObjectMapper objectMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Value("${crawler.python.path:python}")
     private String pythonPath;
 
-    @Value("${crawler.script.output-dir:/tmp}")
+    @Value("${app.crawler.script.output-dir:/tmp}")
     private String outputDir;
 
     @Override
@@ -72,9 +78,19 @@ public class CrawlerServiceImpl implements CrawlerService {
         task.setProgress(0);
         crawlerTaskMapper.updateById(task);
         
-        executeCrawlerScript(task);
+        // Publish event for async execution (avoids self-invocation problem)
+        eventPublisher.publishEvent(new CrawlerTaskStartedEvent(this, taskId));
         
         return task;
+    }
+
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onCrawlerTaskStarted(CrawlerTaskStartedEvent event) {
+        CrawlerTask task = crawlerTaskMapper.selectById(event.getTaskId());
+        if (task != null && "Running".equals(task.getStatus())) {
+            executeCrawlerScript(task);
+        }
     }
 
     @Override
@@ -150,7 +166,7 @@ public class CrawlerServiceImpl implements CrawlerService {
             Path configFile = writeTaskConfig(task);
             String scriptPath = extractScript(crawlerScript);
 
-            ProcessBuilder pb = new ProcessBuilder(pythonPath, scriptPath, task.getId().toString());
+            ProcessBuilder pb = new ProcessBuilder(pythonPath, scriptPath, task.getId().toString(), configFile.toString());
             pb.redirectErrorStream(true);
             Process process = pb.start();
 
@@ -201,22 +217,24 @@ public class CrawlerServiceImpl implements CrawlerService {
         config.put("targetCity", task.getTargetCity());
         
         if (task.getKeywords() != null) {
+            String kw = task.getKeywords().trim();
             try {
-                List<String> keywords = objectMapper.readValue(task.getKeywords(), 
-                        new TypeReference<List<String>>() {});
+                // Try to parse as JSON array
+                List<String> keywords = objectMapper.readValue(kw, new TypeReference<List<String>>() {});
                 config.put("keywords", keywords);
             } catch (Exception e) {
-                config.put("keywords", task.getKeywords());
+                // Fallback: treat as single keyword
+                config.put("keywords", List.of(kw));
             }
         }
         
         if (task.getFilters() != null) {
+            String fl = task.getFilters().trim();
             try {
-                Map<String, Object> filters = objectMapper.readValue(task.getFilters(),
-                        new TypeReference<Map<String, Object>>() {});
+                Map<String, Object> filters = objectMapper.readValue(fl, new TypeReference<Map<String, Object>>() {});
                 config.put("filters", filters);
             } catch (Exception e) {
-                config.put("filters", task.getFilters());
+                config.put("filters", Map.of());
             }
         }
 
@@ -269,7 +287,7 @@ public class CrawlerServiceImpl implements CrawlerService {
                 JsonNode companiesNode = root.get("companies");
                 if (companiesNode.isArray()) {
                     for (JsonNode companyNode : companiesNode) {
-                        saveCompany(taskId, companyNode);
+                        saveCrawlerResult(taskId, task.getSourceType(), companyNode);
                     }
                 }
             }
@@ -283,7 +301,7 @@ public class CrawlerServiceImpl implements CrawlerService {
     }
 
     @Transactional
-    protected void saveCompany(Long taskId, JsonNode companyNode) {
+    protected void saveCrawlerResult(Long taskId, String sourceType, JsonNode companyNode) {
         try {
             String companyName = companyNode.has("companyName") ? companyNode.get("companyName").asText() : "";
             
@@ -291,45 +309,33 @@ public class CrawlerServiceImpl implements CrawlerService {
                 return;
             }
 
-            LambdaQueryWrapper<Company> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(Company::getCompanyName, companyName);
-            Company existing = companyMapper.selectOne(wrapper);
-            
-            if (existing != null) {
-                existing.setIsDuplicate(true);
-                companyMapper.updateById(existing);
-                return;
-            }
-
-            Company company = new Company();
-            company.setCompanyName(companyName);
+            CrawlerResult result = new CrawlerResult();
+            result.setTaskId(taskId);
+            result.setSourceType(sourceType);
+            result.setCompanyName(companyName);
             
             if (companyNode.has("website")) {
-                company.setWebsite(companyNode.get("website").asText());
-            }
-            if (companyNode.has("city")) {
-                company.setCity(companyNode.get("city").asText());
-            }
-            if (companyNode.has("country")) {
-                company.setAddress(companyNode.get("country").asText());
+                result.setWebsite(companyNode.get("website").asText());
             }
             if (companyNode.has("description")) {
-                company.setDescription(companyNode.get("description").asText());
+                result.setBusinessDescription(companyNode.get("description").asText());
             }
             if (companyNode.has("source")) {
-                company.setSource(companyNode.get("source").asText());
+                result.setSourceType(companyNode.get("source").asText());
+            }
+            if (companyNode.has("sourceKeyword")) {
+                result.setSearchKeyword(companyNode.get("sourceKeyword").asText());
             }
             
-            company.setSourceType("Crawler");
-            company.setLeadGrade("C");
-            company.setLeadScore(0);
-            company.setStatus("New");
-            company.setIsDuplicate(false);
+            result.setRawData(companyNode.toString());
+            result.setStatus("Pending");
+            result.setLeadScore(0);
+            result.setLeadGrade("C");
             
-            companyMapper.insert(company);
+            crawlerResultMapper.insert(result);
             
         } catch (Exception e) {
-            log.warn("Failed to save company: {}", e.getMessage());
+            log.warn("Failed to save crawler result: {}", e.getMessage());
         }
     }
 

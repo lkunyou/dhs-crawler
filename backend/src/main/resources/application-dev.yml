@@ -1,0 +1,19 @@
+# 开发环境配置
+spring:
+  # 数据源配置
+  datasource:
+    url: jdbc:mysql://8.163.58.109:3306/thai_auto_parts_crm?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: thai_auto_parts_crm
+    password: ${DB_PASSWORD:tDdY8NX2xJ6HpdHz}
+
+# 日志配置
+logging:
+  level:
+    com.thaiautoparts: debug
+    com.thaiautoparts.repository: debug
+
+# 自定义配置
+app:
+  crawler:
+    script:
+      output-dir: E:\01.work\13.carparts\sprider1\thai-auto-parts-crm\backend\target

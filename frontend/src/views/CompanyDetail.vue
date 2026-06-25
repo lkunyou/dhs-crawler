@@ -144,6 +144,7 @@ onMounted(async () => {
     try {
       const res = await getCompany(id)
       Object.assign(company, res.data)
+      if (!company.contacts) company.contacts = []
     } catch (e) {
       console.error(e)
     } finally {
