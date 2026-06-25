@@ -12,7 +12,7 @@
     </parent>
 
     <groupId>com.thaiautoparts</groupId>
-    <artifactId>thai-auto-parts-crm</artifactId>
+    <artifactId>crawler-backend</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <name>Thai Auto Parts CRM</name>
     <description>泰国汽配B2B获客系统</description>
