@@ -1,7 +1,7 @@
 server:
-  port: 8080
+  port: 8083
   servlet:
-    context-path: /api
+    context-path: /dhs-crawler/api
 
 spring:
   application:
