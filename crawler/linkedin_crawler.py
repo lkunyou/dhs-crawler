@@ -11,6 +11,7 @@ import logging
 from typing import List, Dict, Optional
 from dataclasses import dataclass, asdict
 from datetime import datetime
+from config_reader import get_config_reader
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('linkedin_crawler')
@@ -33,7 +34,7 @@ class LinkedInCrawler:
     """LinkedIn爬虫 - 通过PhantomBuster API"""
     
     def __init__(self, phantombuster_api_key: str = None):
-        self.api_key = phantombuster_api_key or os.getenv("PHANTOMBUSTER_API_KEY", "")
+        self.api_key = phantombuster_api_key or get_config_reader().get('crawler.phantombuster-api-key', '') or os.getenv("PHANTOMBUSTER_API_KEY", "")
         self.api_base = "https://api.phantombuster.com/api/v1"
         self.results: List[LinkedinProfile] = []
     

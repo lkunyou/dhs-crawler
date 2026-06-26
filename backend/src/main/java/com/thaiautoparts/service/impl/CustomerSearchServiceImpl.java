@@ -1,6 +1,7 @@
 package com.thaiautoparts.service.impl;
 
 import com.thaiautoparts.service.CustomerSearchService;
+import com.thaiautoparts.service.SystemConfigService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -18,14 +19,24 @@ import java.util.stream.Collectors;
 @Service
 public class CustomerSearchServiceImpl implements CustomerSearchService {
 
+    private final SystemConfigService systemConfigService;
+
+    public CustomerSearchServiceImpl(SystemConfigService systemConfigService) {
+        this.systemConfigService = systemConfigService;
+    }
+
     @Value("${app.search.serpapi-key:}")
-    private String serpApiKey;
+    private String serpApiKeyYml;
 
     @Value("${app.search.brave-api-key:}")
-    private String braveApiKey;
+    private String braveApiKeyYml;
 
     @Value("${app.search.bing-api-key:}")
-    private String bingApiKey;
+    private String bingApiKeyYml;
+
+    private String getSearchConfig(String key, String defaultValue) {
+        return systemConfigService.getValue(key, defaultValue);
+    }
 
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -71,7 +82,7 @@ public class CustomerSearchServiceImpl implements CustomerSearchService {
             String query = URLEncoder.encode(keyword + " auto parts Thailand", StandardCharsets.UTF_8);
             String url = String.format(
                 "https://serpapi.com/search.json?q=%s&gl=%s&hl=en&api_key=%s",
-                query, country.toLowerCase(), serpApiKey
+                query, country.toLowerCase(), getSearchConfig("search.serpapi-key", serpApiKeyYml)
             );
 
             ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
@@ -110,7 +121,7 @@ public class CustomerSearchServiceImpl implements CustomerSearchService {
             );
 
             HttpHeaders headers = new HttpHeaders();
-            headers.set("X-Subscription-Token", braveApiKey);
+            headers.set("X-Subscription-Token", getSearchConfig("search.brave-api-key", braveApiKeyYml));
             headers.set("Accept", "application/json");
 
             HttpEntity<String> entity = new HttpEntity<>(headers);
@@ -152,7 +163,7 @@ public class CustomerSearchServiceImpl implements CustomerSearchService {
             );
 
             HttpHeaders headers = new HttpHeaders();
-            headers.set("Ocp-Apim-Subscription-Key", bingApiKey);
+            headers.set("Ocp-Apim-Subscription-Key", getSearchConfig("search.bing-api-key", bingApiKeyYml));
             headers.set("Accept", "application/json");
 
             HttpEntity<String> entity = new HttpEntity<>(headers);

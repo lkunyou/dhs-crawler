@@ -10,16 +10,16 @@
     :before-close="handleBeforeClose"
     @update:model-value="handleVisibleChange"
   >
-    <BaseForm
+    <el-form
       v-if="visible"
-      :model-value="formData"
+      :model="formData"
       :rules="rules"
       :label-width="labelWidth"
       :size="size"
       ref="formRef"
     >
-      <slot></slot>
-    </BaseForm>
+      <slot :formData="formData"></slot>
+    </el-form>
     
     <template #footer>
       <el-button @click="handleCancel">取消</el-button>
@@ -32,7 +32,6 @@
 
 <script setup>
 import { ref, reactive, watch } from 'vue'
-import BaseForm from './BaseForm.vue'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -83,7 +82,7 @@ function handleCancel() {
 }
 
 function handleSubmit() {
-  formRef.value?.validateAll().then((valid) => {
+  formRef.value?.validate((valid) => {
     if (valid) {
       emit('submit', { ...formData })
     }

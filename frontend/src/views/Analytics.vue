@@ -87,54 +87,148 @@
 import { ref, reactive, onMounted } from 'vue'
 import * as echarts from 'echarts'
 import { BaseTable } from '@/components'
+import { getEmailStats, getWhatsappStats, getSourceQuality, getTrend, getFunnel } from '@/api/analytics'
 
-const emailStats = reactive({ openRate: 35.2, replyRate: 8.5, replied: 42 })
-const whatsappStats = reactive({ readRate: 72.3, replyRate: 25.6, replied: 68 })
+const emailStats = reactive({ openRate: 0, replyRate: 0, replied: 0, totalSent: 0, totalOpened: 0 })
+const whatsappStats = reactive({ readRate: 0, replyRate: 0, replied: 0, totalSent: 0, totalRead: 0 })
 
 const emailChartRef = ref(null)
 const whatsappChartRef = ref(null)
 const funnelChartRef = ref(null)
 const trendChartRef = ref(null)
 
-const sourceQuality = ref([
-  { source: 'Google', total: 250, highQuality: 45, qualityRate: '18.00' },
-  { source: 'LinkedIn', total: 120, highQuality: 38, qualityRate: '31.67' },
-  { source: 'B2B平台', total: 80, highQuality: 15, qualityRate: '18.75' },
-  { source: '行业目录', total: 50, highQuality: 12, qualityRate: '24.00' }
-])
-
+const sourceQuality = ref([])
 const sourceQualityColumns = [
   { prop: 'source', label: '渠道', width: 120 },
-  { prop: 'total', label: '客户数', width: 100 },
+  { prop: 'count', label: '客户数', width: 100 },
   { prop: 'highQuality', label: 'S/A级', width: 100 },
   { prop: 'qualityRate', label: '质量率', width: 150 }
 ]
 
-onMounted(() => {
+let emailChart = null
+let whatsappChart = null
+let funnelChart = null
+let trendChart = null
+
+onMounted(async () => {
+  await loadData()
   initCharts()
+  window.addEventListener('resize', handleResize)
 })
+
+function handleResize() {
+  emailChart?.resize()
+  whatsappChart?.resize()
+  funnelChart?.resize()
+  trendChart?.resize()
+}
+
+async function loadData() {
+  try {
+    const [emailRes, whatsappRes, sourceRes, funnelRes, trendRes] = await Promise.all([
+      getEmailStats(),
+      getWhatsappStats(),
+      getSourceQuality(),
+      getFunnel(),
+      getTrend(30)
+    ])
+    
+    // 更新邮件统计
+    if (emailRes.data) {
+      Object.assign(emailStats, emailRes.data)
+    }
+    
+    // 更新WhatsApp统计
+    if (whatsappRes.data) {
+      Object.assign(whatsappStats, whatsappRes.data)
+    }
+    
+    // 更新渠道质量
+    if (sourceRes.data) {
+      sourceQuality.value = sourceRes.data.map(item => ({
+        source: item.source || '未知',
+        count: item.count,
+        highQuality: item.highQuality || 0,
+        qualityRate: item.qualityRate || 0
+      }))
+    }
+    
+    // 更新图表数据
+    if (emailChart) {
+      emailChart.setOption({
+        series: [{
+          data: [
+            emailRes.data?.totalSent || 0,
+            emailRes.data?.totalOpened || 0,
+            emailRes.data?.totalOpened || 0,
+            emailRes.data?.totalReplied || 0
+          ]
+        }]
+      })
+    }
+    
+    if (whatsappChart) {
+      whatsappChart.setOption({
+        series: [{
+          data: [
+            whatsappRes.data?.totalSent || 0,
+            whatsappRes.data?.totalSent || 0,
+            whatsappRes.data?.totalRead || 0,
+            whatsappRes.data?.totalReplied || 0
+          ]
+        }]
+      })
+    }
+    
+    if (funnelChart) {
+      funnelChart.setOption({
+        series: [{
+          data: (funnelRes.data || []).map(item => ({
+            value: item.count,
+            name: item.status || '未知'
+          }))
+        }]
+      })
+    }
+    
+    if (trendChart && trendRes.data) {
+      trendChart.setOption({
+        xAxis: {
+          data: trendRes.data.map(item => item.date)
+        },
+        series: [
+          { data: trendRes.data.map(item => item.newCompanies) },
+          { data: trendRes.data.map(item => item.emailsSent) },
+          { data: trendRes.data.map(item => item.replies) }
+        ]
+      })
+    }
+  } catch (e) {
+    console.error('Failed to load analytics data:', e)
+  }
+}
 
 function initCharts() {
   // 邮件效果柱状图
-  const emailChart = echarts.init(emailChartRef.value)
+  emailChart = echarts.init(emailChartRef.value)
   emailChart.setOption({
     tooltip: { trigger: 'axis' },
     xAxis: { type: 'category', data: ['发送', '送达', '打开', '回复'] },
     yAxis: { type: 'value' },
-    series: [{ data: [500, 485, 176, 42], type: 'bar', itemStyle: { color: '#409EFF' } }]
+    series: [{ data: [], type: 'bar', itemStyle: { color: '#409EFF' } }]
   })
 
   // WhatsApp效果
-  const waChart = echarts.init(whatsappChartRef.value)
-  waChart.setOption({
+  whatsappChart = echarts.init(whatsappChartRef.value)
+  whatsappChart.setOption({
     tooltip: { trigger: 'axis' },
     xAxis: { type: 'category', data: ['发送', '送达', '已读', '回复'] },
     yAxis: { type: 'value' },
-    series: [{ data: [265, 258, 186, 68], type: 'bar', itemStyle: { color: '#67C23A' } }]
+    series: [{ data: [], type: 'bar', itemStyle: { color: '#67C23A' } }]
   })
 
   // 转化漏斗
-  const funnelChart = echarts.init(funnelChartRef.value)
+  funnelChart = echarts.init(funnelChartRef.value)
   funnelChart.setOption({
     tooltip: { trigger: 'item' },
     series: [{
@@ -147,33 +241,21 @@ function initCharts() {
       sort: 'descending',
       gap: 2,
       label: { show: true, position: 'inside' },
-      data: [
-        { value: 500, name: 'New Lead' },
-        { value: 350, name: 'Contacted' },
-        { value: 120, name: 'Replied' },
-        { value: 45, name: 'Quoted' },
-        { value: 20, name: 'Negotiation' },
-        { value: 8, name: 'Won' }
-      ]
+      data: []
     }]
   })
 
   // 30天趋势
-  const trendChart = echarts.init(trendChartRef.value)
-  const dates = Array.from({ length: 30 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - 29 + i);
-    return `${d.getMonth() + 1}/${d.getDate()}`;
-  })
+  trendChart = echarts.init(trendChartRef.value)
   trendChart.setOption({
     tooltip: { trigger: 'axis' },
     legend: { data: ['新增客户', '邮件发送', '客户回复'] },
-    xAxis: { type: 'category', data: dates },
+    xAxis: { type: 'category', data: [] },
     yAxis: { type: 'value' },
     series: [
-      { name: '新增客户', type: 'line', data: Array.from({ length: 30 }, () => Math.floor(Math.random() * 20 + 5)), smooth: true },
-      { name: '邮件发送', type: 'line', data: Array.from({ length: 30 }, () => Math.floor(Math.random() * 30 + 10)), smooth: true },
-      { name: '客户回复', type: 'line', data: Array.from({ length: 30 }, () => Math.floor(Math.random() * 5 + 1)), smooth: true }
+      { name: '新增客户', type: 'line', data: [], smooth: true },
+      { name: '邮件发送', type: 'line', data: [], smooth: true },
+      { name: '客户回复', type: 'line', data: [], smooth: true }
     ]
   })
 }

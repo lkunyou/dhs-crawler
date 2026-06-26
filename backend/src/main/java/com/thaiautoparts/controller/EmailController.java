@@ -3,7 +3,9 @@ package com.thaiautoparts.controller;
 import com.thaiautoparts.dto.PageResult;
 import com.thaiautoparts.dto.Result;
 import com.thaiautoparts.entity.EmailRecord;
+import com.thaiautoparts.entity.EmailTemplate;
 import com.thaiautoparts.entity.InboundEmail;
+import com.thaiautoparts.repository.EmailTemplateMapper;
 import com.thaiautoparts.service.EmailReceiverService;
 import com.thaiautoparts.service.EmailService;
 import lombok.Data;
@@ -20,6 +22,7 @@ public class EmailController {
 
     private final EmailService emailService;
     private final EmailReceiverService emailReceiverService;
+    private final EmailTemplateMapper emailTemplateMapper;
 
     @PostMapping("/send")
     public Result<Void> sendEmail(@RequestBody SendEmailRequest request) {
@@ -113,6 +116,39 @@ public class EmailController {
     public Result<String> fetchEmails() {
         emailReceiverService.fetchEmails();
         return Result.success("邮件获取任务已启动");
+    }
+
+    @GetMapping("/templates")
+    public Result<List<EmailTemplate>> getTemplates() {
+        return Result.success(emailTemplateMapper.selectList(null));
+    }
+
+    @GetMapping("/templates/{id}")
+    public Result<EmailTemplate> getTemplateById(@PathVariable Long id) {
+        EmailTemplate template = emailTemplateMapper.selectById(id);
+        if (template != null) {
+            return Result.success(template);
+        }
+        return Result.error("模板不存在");
+    }
+
+    @PostMapping("/templates")
+    public Result<EmailTemplate> createTemplate(@RequestBody EmailTemplate template) {
+        emailTemplateMapper.insert(template);
+        return Result.success(template);
+    }
+
+    @PutMapping("/templates/{id}")
+    public Result<EmailTemplate> updateTemplate(@PathVariable Long id, @RequestBody EmailTemplate template) {
+        template.setId(id);
+        emailTemplateMapper.updateById(template);
+        return Result.success(template);
+    }
+
+    @DeleteMapping("/templates/{id}")
+    public Result<Void> deleteTemplate(@PathVariable Long id) {
+        emailTemplateMapper.deleteById(id);
+        return Result.success();
     }
 
     @Data

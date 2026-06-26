@@ -13,4 +13,10 @@ public interface FollowUpRecordMapper extends BaseMapper<FollowUpRecord> {
     
     @Select("SELECT * FROM p_follow_up_record WHERE company_id = #{companyId} ORDER BY created_at DESC")
     List<FollowUpRecord> findByCompanyId(@Param("companyId") Long companyId);
+    
+    @Select("SELECT COUNT(*) FROM p_follow_up_record WHERE outcome = #{outcome}")
+    Long countByOutcome(@Param("outcome") String outcome);
+    
+    @Select("SELECT COUNT(*) FROM p_follow_up_record WHERE follow_up_type = #{type}")
+    Long countByType(@Param("type") String type);
 }

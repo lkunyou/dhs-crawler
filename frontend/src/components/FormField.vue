@@ -2,7 +2,7 @@
   <el-form-item :label="label" :prop="prop" :rules="rules">
     <el-input
       v-if="type === 'input'"
-      :model-value="modelValue"
+      v-model="value"
       :type="inputType"
       :placeholder="placeholder"
       :clearable="clearable"
@@ -13,31 +13,28 @@
       :show-password="showPassword"
       :maxlength="maxlength"
       :show-word-limit="showWordLimit"
-      @update:model-value="handleChange"
     />
     
     <el-input-number
       v-else-if="type === 'number'"
-      :model-value="modelValue"
+      v-model="value"
       :placeholder="placeholder"
       :disabled="disabled"
       :min="min"
       :max="max"
       :step="step"
       :precision="precision"
-      @update:model-value="handleChange"
     />
     
     <el-select
       v-else-if="type === 'select'"
-      :model-value="modelValue"
+      v-model="value"
       :placeholder="placeholder"
       :clearable="clearable"
       :disabled="disabled"
       :multiple="multiple"
       :filterable="filterable"
       :allow-create="allowCreate"
-      @update:model-value="handleChange"
     >
       <el-option
         v-for="option in options"
@@ -49,88 +46,81 @@
     
     <el-date-picker
       v-else-if="type === 'date'"
-      :model-value="modelValue"
+      v-model="value"
       :type="dateType"
       :placeholder="placeholder"
       :disabled="disabled"
       :clearable="clearable"
       :format="format"
       :value-format="valueFormat"
-      @update:model-value="handleChange"
     />
     
     <el-date-picker
       v-else-if="type === 'daterange'"
-      :model-value="modelValue"
+      v-model="value"
       type="daterange"
       range-separator="至"
       start-placeholder="开始日期"
       end-placeholder="结束日期"
       :disabled="disabled"
       :clearable="clearable"
-      @update:model-value="handleChange"
     />
     
     <el-switch
       v-else-if="type === 'switch'"
-      :model-value="modelValue"
+      v-model="value"
       :disabled="disabled"
       :active-text="activeText"
       :inactive-text="inactiveText"
-      @update:model-value="handleChange"
     />
     
-    <el-textarea
+    <el-input
       v-else-if="type === 'textarea'"
-      :model-value="modelValue"
+      v-model="value"
+      type="textarea"
       :placeholder="placeholder"
       :disabled="disabled"
       :rows="rows"
       :maxlength="maxlength"
       :show-word-limit="showWordLimit"
       :resize="resize"
-      @update:model-value="handleChange"
     />
     
     <el-cascader
       v-else-if="type === 'cascader'"
-      :model-value="modelValue"
+      v-model="value"
       :options="options"
       :placeholder="placeholder"
       :disabled="disabled"
       :clearable="clearable"
       :props="cascaderProps"
-      @update:model-value="handleChange"
     />
     
     <el-color-picker
       v-else-if="type === 'color'"
-      :model-value="modelValue"
+      v-model="value"
       :disabled="disabled"
       :show-alpha="showAlpha"
-      @update:model-value="handleChange"
     />
     
     <el-rate
       v-else-if="type === 'rate'"
-      :model-value="modelValue"
+      v-model="value"
       :disabled="disabled"
       :max="max || 5"
-      @update:model-value="handleChange"
     />
     
     <component
       v-else-if="type === 'component'"
       :is="customComponent"
-      :model-value="modelValue"
-      @update:model-value="handleChange"
+      v-model="value"
       v-bind="componentProps"
     />
   </el-form-item>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, watch } from 'vue'
 
 const props = defineProps({
   modelValue: { type: [String, Number, Boolean, Array, Object], default: '' },
@@ -180,8 +170,14 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'change'])
 
-function handleChange(value) {
-  emit('update:modelValue', value)
-  emit('change', value)
-}
+const value = ref(props.modelValue)
+
+watch(() => props.modelValue, (newVal) => {
+  value.value = newVal
+})
+
+watch(value, (newVal) => {
+  emit('update:modelValue', newVal)
+  emit('change', newVal)
+})
 </script>

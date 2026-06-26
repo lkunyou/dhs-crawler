@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 
 @Service
@@ -32,6 +33,72 @@ public class SystemConfigServiceImpl implements SystemConfigService {
         return systemConfigMapper.selectOne(
             new LambdaQueryWrapper<SystemConfig>().eq(SystemConfig::getConfigKey, configKey)
         );
+    }
+
+    @Override
+    public String getValue(String configKey, String defaultValue) {
+        SystemConfig config = systemConfigMapper.selectOne(
+            new LambdaQueryWrapper<SystemConfig>().eq(SystemConfig::getConfigKey, configKey)
+        );
+        if (config == null || config.getConfigValue() == null) {
+            return defaultValue;
+        }
+        return config.getConfigValue();
+    }
+
+    @Override
+    @Transactional
+    public void initDefaultConfigs() {
+        List<SystemConfig> defaults = Arrays.asList(
+            // 邮件配置
+            new SystemConfig() {{ setConfigKey("mail.host"); setConfigValue("smtp.qiye.aliyun.com"); setConfigType("email"); setDescription("SMTP服务器地址"); }},
+            new SystemConfig() {{ setConfigKey("mail.port"); setConfigValue("465"); setConfigType("email"); setDescription("SMTP端口"); }},
+            new SystemConfig() {{ setConfigKey("mail.host-imap"); setConfigValue("imap.qiye.aliyun.com"); setConfigType("email"); setDescription("IMAP服务器地址"); }},
+            new SystemConfig() {{ setConfigKey("mail.port-imap"); setConfigValue("993"); setConfigType("email"); setDescription("IMAP端口"); }},
+            new SystemConfig() {{ setConfigKey("mail.username"); setConfigValue("market@carparts-land.com"); setConfigType("email"); setDescription("邮箱账号"); }},
+            new SystemConfig() {{ setConfigKey("mail.password"); setConfigValue(""); setConfigType("email"); setDescription("邮箱密码/授权码"); }},
+            new SystemConfig() {{ setConfigKey("mail.ssl.enable"); setConfigValue("true"); setConfigType("email"); setDescription("启用SSL"); }},
+            new SystemConfig() {{ setConfigKey("mail.connectiontimeout"); setConfigValue("5000"); setConfigType("email"); setDescription("连接超时(ms)"); }},
+            new SystemConfig() {{ setConfigKey("mail.timeout"); setConfigValue("5000"); setConfigType("email"); setDescription("读取超时(ms)"); }},
+            // 搜索配置
+            new SystemConfig() {{ setConfigKey("search.serpapi-key"); setConfigValue(""); setConfigType("search"); setDescription("SerpAPI密钥"); }},
+            new SystemConfig() {{ setConfigKey("search.brave-api-key"); setConfigValue(""); setConfigType("search"); setDescription("Brave Search API密钥"); }},
+            new SystemConfig() {{ setConfigKey("search.bing-api-key"); setConfigValue(""); setConfigType("search"); setDescription("Bing API密钥"); }},
+            // 爬虫配置
+            new SystemConfig() {{ setConfigKey("crawler.python.path"); setConfigValue("python"); setConfigType("crawler"); setDescription("Python路径"); }},
+            new SystemConfig() {{ setConfigKey("crawler.output-dir"); setConfigValue("/tmp"); setConfigType("crawler"); setDescription("爬虫输出目录"); }},
+            new SystemConfig() {{ setConfigKey("crawler.max-concurrent"); setConfigValue("3"); setConfigType("crawler"); setDescription("最大并发任务数"); }},
+            new SystemConfig() {{ setConfigKey("crawler.timeout"); setConfigValue("30"); setConfigType("crawler"); setDescription("请求超时(秒)"); }},
+            new SystemConfig() {{ setConfigKey("crawler.retry-count"); setConfigValue("3"); setConfigType("crawler"); setDescription("失败重试次数"); }},
+            new SystemConfig() {{ setConfigKey("crawler.headless"); setConfigValue("true"); setConfigType("crawler"); setDescription("无头浏览器模式"); }},
+            // 爬虫API密钥
+            new SystemConfig() {{ setConfigKey("crawler.serp-api-key"); setConfigValue(""); setConfigType("crawler"); setDescription("SerpAPI密钥(Google搜索)"); }},
+            new SystemConfig() {{ setConfigKey("crawler.phantombuster-api-key"); setConfigValue(""); setConfigType("crawler"); setDescription("PhantomBuster密钥(LinkedIn)"); }},
+            new SystemConfig() {{ setConfigKey("crawler.proxy-url"); setConfigValue(""); setConfigType("crawler"); setDescription("代理服务器地址"); }},
+            new SystemConfig() {{ setConfigKey("crawler.proxy-username"); setConfigValue(""); setConfigType("crawler"); setDescription("代理用户名"); }},
+            new SystemConfig() {{ setConfigKey("crawler.proxy-password"); setConfigValue(""); setConfigType("crawler"); setDescription("代理密码"); }},
+            // 爬虫任务类型配置
+            new SystemConfig() {{ setConfigKey("crawler.task.google-search"); setConfigValue("true"); setConfigType("crawler"); setDescription("启用Google搜索爬虫"); }},
+            new SystemConfig() {{ setConfigKey("crawler.task.google-maps"); setConfigValue("true"); setConfigType("crawler"); setDescription("启用Google Maps爬虫"); }},
+            new SystemConfig() {{ setConfigKey("crawler.task.linkedin"); setConfigValue("true"); setConfigType("crawler"); setDescription("启用LinkedIn爬虫"); }},
+            new SystemConfig() {{ setConfigKey("crawler.task.thai-trade"); setConfigValue("true"); setConfigType("crawler"); setDescription("启用ThaiTrade爬虫"); }},
+            new SystemConfig() {{ setConfigKey("crawler.task.alibaba"); setConfigValue("true"); setConfigType("crawler"); setDescription("启用Alibaba爬虫"); }},
+            new SystemConfig() {{ setConfigKey("crawler.task.tapaa"); setConfigValue("true"); setConfigType("crawler"); setDescription("启用TAPAA爬虫"); }},
+            new SystemConfig() {{ setConfigKey("crawler.task.yellow-pages"); setConfigValue("true"); setConfigType("crawler"); setDescription("启用YellowPages爬虫"); }},
+            new SystemConfig() {{ setConfigKey("crawler.task.batch"); setConfigValue("true"); setConfigType("crawler"); setDescription("启用批量爬虫"); }},
+            // 限流配置
+            new SystemConfig() {{ setConfigKey("rate-limit.email-daily"); setConfigValue("100"); setConfigType("rate-limit"); setDescription("每日邮件发送上限"); }},
+            new SystemConfig() {{ setConfigKey("rate-limit.whatsapp-daily"); setConfigValue("50"); setConfigType("rate-limit"); setDescription("每日WhatsApp发送上限"); }},
+            new SystemConfig() {{ setConfigKey("rate-limit.linkedin-daily"); setConfigValue("100"); setConfigType("rate-limit"); setDescription("每日LinkedIn操作上限"); }},
+            // 基本配置
+            new SystemConfig() {{ setConfigKey("upload_base_path"); setConfigValue("./uploads"); setConfigType("common"); setDescription("文件上传基础路径"); }}
+        );
+        for (SystemConfig c : defaults) {
+            if (getByKey(c.getConfigKey()) == null) {
+                c.setUpdatedAt(LocalDateTime.now());
+                systemConfigMapper.insert(c);
+            }
+        }
     }
 
     @Override

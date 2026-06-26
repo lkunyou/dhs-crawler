@@ -19,3 +19,7 @@ export function deleteConfig(id) {
 export function getConfigByKey(configKey) {
   return request.get(`/system-configs/key/${configKey}`)
 }
+
+export function initDefaultConfigs() {
+  return request.post('/system-configs/init-defaults')
+}

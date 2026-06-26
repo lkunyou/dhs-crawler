@@ -16,6 +16,7 @@ import com.thaiautoparts.repository.EmailRecordMapper;
 import com.thaiautoparts.repository.EmailTemplateMapper;
 import com.thaiautoparts.repository.FollowUpRecordMapper;
 import com.thaiautoparts.service.EmailService;
+import com.thaiautoparts.service.SystemConfigService;
 import jakarta.mail.*;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
@@ -45,30 +46,40 @@ public class EmailServiceImpl implements EmailService {
     private final CompanyMapper companyMapper;
     private final ContactPersonMapper contactPersonMapper;
     private final FollowUpRecordMapper followUpRecordMapper;
+    private final SystemConfigService systemConfigService;
 
-    @Value("${spring.mail.host-smtp}")
-    private String mailHostSmtp;
+    @Value("${spring.mail.host-smtp:}")
+    private String mailHostSmtpYml;
 
     @Value("${spring.mail.port-smtp:465}")
-    private int mailPortSmtp;
+    private int mailPortSmtpYml;
 
-    @Value("${spring.mail.username}")
-    private String mailUsername;
+    @Value("${spring.mail.username:}")
+    private String mailUsernameYml;
 
-    @Value("${spring.mail.password}")
-    private String mailPassword;
+    @Value("${spring.mail.password:}")
+    private String mailPasswordYml;
+
+    private String getMailConfig(String key, String defaultValue) {
+        return systemConfigService.getValue(key, defaultValue);
+    }
 
     private Session createSmtpSession() {
+        String mailHostSmtp = getMailConfig("mail.host", mailHostSmtpYml);
+        int mailPortSmtp = Integer.parseInt(getMailConfig("mail.port", String.valueOf(mailPortSmtpYml)));
+        String mailUsername = getMailConfig("mail.username", mailUsernameYml);
+        String mailPassword = getMailConfig("mail.password", mailPasswordYml);
+
         Properties props = new Properties();
         props.setProperty("mail.transport.protocol", "smtp");
         props.setProperty("mail.smtp.host", mailHostSmtp);
         props.setProperty("mail.smtp.port", String.valueOf(mailPortSmtp));
         props.setProperty("mail.smtp.auth", "true");
-        props.setProperty("mail.smtp.ssl.enable", "true");
+        props.setProperty("mail.smtp.ssl.enable", getMailConfig("mail.ssl.enable", "true"));
         props.setProperty("mail.smtp.socketFactory.class", "javax.net.ssl.SSLSocketFactory");
         props.setProperty("mail.smtp.socketFactory.fallback", "false");
-        props.setProperty("mail.smtp.connectiontimeout", "5000");
-        props.setProperty("mail.smtp.timeout", "5000");
+        props.setProperty("mail.smtp.connectiontimeout", getMailConfig("mail.connectiontimeout", "5000"));
+        props.setProperty("mail.smtp.timeout", getMailConfig("mail.timeout", "5000"));
         
         return Session.getInstance(props, new Authenticator() {
             @Override
@@ -126,7 +137,7 @@ public class EmailServiceImpl implements EmailService {
         try {
             Session session = createSmtpSession();
             MimeMessage message = new MimeMessage(session);
-            message.setFrom(new jakarta.mail.internet.InternetAddress(mailUsername));
+            message.setFrom(new jakarta.mail.internet.InternetAddress(getMailConfig("mail.username", mailUsernameYml)));
             message.setRecipient(Message.RecipientType.TO, new jakarta.mail.internet.InternetAddress(recipientEmail));
             message.setSubject(template.getSubject(), "UTF-8");
             message.setContent(content, "text/html; charset=UTF-8");

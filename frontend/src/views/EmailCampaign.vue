@@ -116,7 +116,12 @@
         </el-form-item>
         
         <el-form-item label="预览">
-          <div class="email-preview" v-html="emailPreview"></div>
+          <div class="email-preview">
+            <div v-if="emailForm.templateId" class="preview-header">
+              <strong>主题:</strong> {{ templates.find(t => t.id === emailForm.templateId)?.subject || '-' }}
+            </div>
+            <div class="preview-content" v-html="emailPreview"></div>
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -160,6 +165,11 @@
           <el-descriptions-item label="发送时间">{{ selectedRecord.sentAt || '-' }}</el-descriptions-item>
           <el-descriptions-item label="打开时间">{{ selectedRecord.openedAt || '-' }}</el-descriptions-item>
           <el-descriptions-item label="回复时间" :span="2">{{ selectedRecord.repliedAt || '-' }}</el-descriptions-item>
+          <el-descriptions-item v-if="selectedRecord.status === 'Failed' && selectedRecord.errorMessage" label="失败原因" :span="2">
+            <el-alert type="error" :closable="false" show-icon>
+              {{ selectedRecord.errorMessage }}
+            </el-alert>
+          </el-descriptions-item>
           <el-descriptions-item label="邮件内容" :span="2">
             <div class="email-content" v-html="selectedRecord.content || '-'"></div>
           </el-descriptions-item>
@@ -176,7 +186,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { sendEmail, sendBatchEmail, getAllEmailRecords } from '@/api/email'
+import { sendEmail, sendBatchEmail, getAllEmailRecords, getEmailTemplates } from '@/api/email'
 import { getCompanies } from '@/api/company'
 
 const route = useRoute()
@@ -213,13 +223,7 @@ const emailPreview = ref('')
 const companies = ref([])
 const selectedCompany = ref(null)
 const selectedRecord = ref(null)
-const templates = ref([
-  { id: 1, templateName: 'Day1-公司介绍', subject: 'Professional Auto Parts Manufacturer from China', category: 'Cold_Outreach', daySequence: 1 },
-  { id: 2, templateName: 'Day3-热销产品', subject: 'Hot Selling Auto Parts for Thai Market', category: 'Product_Promo', daySequence: 3 },
-  { id: 3, templateName: 'Day6-OEM案例', subject: 'OEM Partnership Success Story', category: 'OEM_Case', daySequence: 6 },
-  { id: 4, templateName: 'Day10-报价引导', subject: 'Exclusive Price List', category: 'Quote', daySequence: 10 },
-  { id: 5, templateName: 'Day15-促销提醒', subject: 'Limited-Time Promotion', category: 'Promotion', daySequence: 15 }
-])
+const templates = ref([])
 
 const sendRecords = ref([])
 
@@ -228,9 +232,17 @@ onMounted(async () => {
     emailForm.companyId = parseInt(route.query.companyId)
     emailForm.targetType = 'single'
   }
-  await loadCompanies()
-  await loadRecords()
+  await Promise.all([loadCompanies(), loadTemplates(), loadRecords()])
 })
+
+async function loadTemplates() {
+  try {
+    const res = await getEmailTemplates()
+    templates.value = res.data || []
+  } catch (e) {
+    console.error('加载邮件模板失败:', e)
+  }
+}
 
 async function loadCompanies() {
   try {
@@ -307,7 +319,9 @@ function handleCompanySelect(companyId) {
 function handleTemplateChange() {
   const template = templates.value.find(t => t.id === emailForm.templateId)
   if (template) {
-    emailPreview.value = `<p><strong>主题:</strong> ${template.subject}</p><p>邮件内容预览...</p>`
+    emailPreview.value = template.content || ''
+  } else {
+    emailPreview.value = ''
   }
 }
 
@@ -428,10 +442,32 @@ function getRecordStatusLabel(status) {
 
 .email-preview {
   border: 1px solid #e8f4f8;
-  padding: 15px;
   border-radius: 8px;
-  background: #f8fafc;
+  background: #fff;
+  overflow: hidden;
+}
+
+.email-preview .preview-header {
+  padding: 10px 15px;
+  background: #f0f9ff;
+  border-bottom: 1px solid #e8f4f8;
+  font-size: 13px;
+  color: #334155;
+}
+
+.email-preview .preview-content {
+  padding: 15px;
   min-height: 150px;
+  max-height: 300px;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #334155;
+}
+
+.email-preview .preview-content img {
+  max-width: 100%;
+  height: auto;
 }
 
 .email-detail {

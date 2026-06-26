@@ -11,6 +11,7 @@ import com.thaiautoparts.repository.CrawlerResultMapper;
 import com.thaiautoparts.repository.CrawlerTaskMapper;
 import com.thaiautoparts.service.CrawlerResultService;
 import com.thaiautoparts.service.CrawlerService;
+import com.thaiautoparts.service.SystemConfigService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -42,12 +43,17 @@ public class CrawlerServiceImpl implements CrawlerService {
     private final CrawlerResultMapper crawlerResultMapper;
     private final ObjectMapper objectMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final SystemConfigService systemConfigService;
 
     @Value("${crawler.python.path:python}")
-    private String pythonPath;
+    private String pythonPathYml;
 
     @Value("${app.crawler.script.output-dir:/tmp}")
-    private String outputDir;
+    private String outputDirYml;
+
+    private String getCrawlerConfig(String key, String defaultValue) {
+        return systemConfigService.getValue(key, defaultValue);
+    }
 
     @Override
     @Transactional
@@ -166,7 +172,12 @@ public class CrawlerServiceImpl implements CrawlerService {
             Path configFile = writeTaskConfig(task);
             String scriptPath = extractScript(crawlerScript);
 
-            ProcessBuilder pb = new ProcessBuilder(pythonPath, scriptPath, task.getId().toString(), configFile.toString());
+            ProcessBuilder pb = new ProcessBuilder(
+                getCrawlerConfig("crawler.python.path", pythonPathYml), 
+                scriptPath, 
+                task.getId().toString(), 
+                configFile.toString()
+            );
             pb.redirectErrorStream(true);
             Process process = pb.start();
 
@@ -238,7 +249,7 @@ public class CrawlerServiceImpl implements CrawlerService {
             }
         }
 
-        Path outputPath = Paths.get(outputDir);
+        Path outputPath = Paths.get(getCrawlerConfig("crawler.output-dir", outputDirYml));
         if (!Files.exists(outputPath)) {
             Files.createDirectories(outputPath);
         }
@@ -250,7 +261,7 @@ public class CrawlerServiceImpl implements CrawlerService {
     }
 
     private String extractScript(String scriptName) throws IOException {
-        Path tempDir = Paths.get(outputDir, "scripts");
+        Path tempDir = Paths.get(getCrawlerConfig("crawler.output-dir", outputDirYml), "scripts");
         if (!Files.exists(tempDir)) {
             Files.createDirectories(tempDir);
         }

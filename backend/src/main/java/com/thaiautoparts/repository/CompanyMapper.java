@@ -12,6 +12,9 @@ import java.util.Map;
 @Mapper
 public interface CompanyMapper extends BaseMapper<Company> {
     
+    @Select("SELECT COUNT(*) FROM p_company WHERE is_duplicate = 0")
+    Long countTotal();
+    
     @Select("SELECT lead_grade, COUNT(*) as count FROM p_company WHERE is_duplicate = 0 GROUP BY lead_grade")
     List<Map<String, Object>> countByLeadGrade();
     

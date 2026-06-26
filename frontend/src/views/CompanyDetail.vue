@@ -243,12 +243,11 @@
         </el-form-item>
         <el-form-item label="跟进结果" required>
           <el-select v-model="followupForm.result" placeholder="选择跟进结果" style="width: 100%">
-            <el-option label="已联系" value="contacted" />
-            <el-option label="有意向" value="interested" />
-            <el-option label="已报价" value="quoted" />
-            <el-option label="已下单" value="ordered" />
-            <el-option label="无回复" value="no_reply" />
-            <el-option label="已拒绝" value="rejected" />
+            <el-option label="积极" value="Positive" />
+            <el-option label="一般" value="Neutral" />
+            <el-option label="消极" value="Negative" />
+            <el-option label="无回复" value="No_Response" />
+            <el-option label="无效联系方式" value="Invalid_Contact" />
           </el-select>
         </el-form-item>
         <el-form-item label="跟进内容" required>

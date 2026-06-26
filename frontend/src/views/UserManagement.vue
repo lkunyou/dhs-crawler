@@ -15,6 +15,13 @@
         <el-table-column prop="realName" label="真实姓名" width="150" />
         <el-table-column prop="email" label="邮箱" width="200" />
         <el-table-column prop="phone" label="电话" width="150" />
+        <el-table-column prop="role" label="角色" width="120">
+          <template #default="{ row }">
+            <el-tag :type="getRoleTagType(row.role)">
+              {{ getRoleLabel(row.role) }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="row.status === 'active' ? 'success' : 'danger'">
@@ -48,6 +55,14 @@
         </el-form-item>
         <el-form-item label="电话">
           <el-input v-model="form.phone" placeholder="请输入电话" />
+        </el-form-item>
+        <el-form-item label="角色">
+          <el-select v-model="form.role" placeholder="请选择角色">
+            <el-option label="管理员" value="admin" />
+            <el-option label="普通用户" value="user" />
+            <el-option label="销售" value="sales" />
+            <el-option label="运营" value="operator" />
+          </el-select>
         </el-form-item>
         <el-form-item label="状态">
           <el-switch
@@ -83,8 +98,29 @@ const form = reactive({
   realName: '',
   email: '',
   phone: '',
+  role: 'user',
   status: 'active'
 })
+
+function getRoleLabel(role) {
+  const labels = {
+    admin: '管理员',
+    user: '普通用户',
+    sales: '销售',
+    operator: '运营'
+  }
+  return labels[role] || '普通用户'
+}
+
+function getRoleTagType(role) {
+  const types = {
+    admin: 'danger',
+    user: 'info',
+    sales: 'success',
+    operator: 'warning'
+  }
+  return types[role] || 'info'
+}
 
 function resetForm() {
   form.id = null
@@ -93,6 +129,7 @@ function resetForm() {
   form.realName = ''
   form.email = ''
   form.phone = ''
+  form.role = 'user'
   form.status = 'active'
 }
 

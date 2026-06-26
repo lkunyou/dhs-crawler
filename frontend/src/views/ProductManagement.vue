@@ -101,6 +101,21 @@
       <!-- 产品列表 -->
       <el-table :data="products" border style="margin-top: 20px" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" />
+        <el-table-column label="图片" width="80">
+          <template #default="{ row }">
+            <el-image
+              v-if="row.imageUrl"
+              :src="row.imageUrl"
+              fit="cover"
+              style="width: 50px; height: 50px; border-radius: 4px; cursor: pointer;"
+              :preview-src-list="[row.imageUrl]"
+              :initial-index="0"
+            />
+            <div v-else style="width: 50px; height: 50px; background: #f5f5f5; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #ccc; font-size: 20px;">
+              <el-icon><Picture /></el-icon>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column prop="productName" label="产品名称" min-width="180">
           <template #default="{ row }">
             <el-link type="primary" @click="editProduct(row)">{{ row.productName }}</el-link>
@@ -253,6 +268,28 @@
             </el-form-item>
           </el-col>
         </el-row>
+        <el-form-item label="产品图片">
+          <div class="image-upload-wrapper">
+            <el-upload
+              action=""
+              :auto-upload="false"
+              :show-file-list="false"
+              :on-change="handleImageUpload"
+              accept="image/*"
+            >
+              <el-button type="primary" size="small">选择图片</el-button>
+            </el-upload>
+            <div v-if="productForm.imageUrl" class="image-preview">
+              <el-image
+                :src="productForm.imageUrl"
+                fit="cover"
+                style="width: 100px; height: 100px; border-radius: 4px; border: 1px solid #ddd;"
+                :preview-src-list="[productForm.imageUrl]"
+              />
+              <el-button type="danger" size="small" link @click="productForm.imageUrl = ''" style="margin-left: 8px;">删除</el-button>
+            </div>
+          </div>
+        </el-form-item>
         <el-form-item label="描述">
           <el-input v-model="productForm.description" type="textarea" :rows="3" placeholder="请输入产品描述" />
         </el-form-item>
@@ -374,6 +411,14 @@
     <!-- 产品详情弹窗 -->
     <el-dialog v-model="viewDialogVisible" title="产品详情" width="800px">
       <div v-if="viewProductData" class="product-detail">
+        <div v-if="viewProductData.imageUrl" style="margin-bottom: 20px; text-align: center;">
+          <el-image
+            :src="viewProductData.imageUrl"
+            fit="contain"
+            style="max-width: 400px; max-height: 300px; border-radius: 8px; border: 1px solid #ddd;"
+            :preview-src-list="[viewProductData.imageUrl]"
+          />
+        </div>
         <el-descriptions :column="2" border>
           <el-descriptions-item label="产品名称">{{ viewProductData.productName }}</el-descriptions-item>
           <el-descriptions-item label="产品编码">{{ viewProductData.productCode || '-' }}</el-descriptions-item>
@@ -432,7 +477,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Box, Check, Warning, TrendCharts } from '@element-plus/icons-vue'
+import { Box, Check, Warning, TrendCharts, Picture } from '@element-plus/icons-vue'
 import { getProducts, createProduct, updateProduct, deleteProduct as deleteProductApi } from '@/api/product'
 import { getCompanies } from '@/api/company'
 import { createQuote } from '@/api/quote'
@@ -504,7 +549,8 @@ const productForm = reactive({
   qtyPerPkg: null,
   carModel: '',
   productionDate: '',
-  weight: null
+  weight: null,
+  imageUrl: ''
 })
 
 const stats = computed(() => ({
@@ -597,7 +643,8 @@ function editProduct(row) {
     qtyPerPkg: row.qtyPerPkg,
     carModel: row.carModel,
     productionDate: row.productionDate,
-    weight: row.weight
+    weight: row.weight,
+    imageUrl: row.imageUrl
   })
   createDialogVisible.value = true
 }
@@ -678,7 +725,8 @@ function resetForm() {
     qtyPerPkg: null,
     carModel: '',
     productionDate: '',
-    weight: null
+    weight: null,
+    imageUrl: ''
   })
 }
 
@@ -699,6 +747,24 @@ function formatDateTime(dateStr) {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
   return date.toLocaleString('zh-CN')
+}
+
+async function handleImageUpload(file) {
+  const formData = new FormData()
+  formData.append('file', file.raw)
+  try {
+    const res = await request.post('/products/upload-image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    if (res.data) {
+      productForm.imageUrl = res.data
+      ElMessage.success('图片上传成功')
+    }
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('图片上传失败')
+  }
+  return false
 }
 
 function handleSelectionChange(selection) {
@@ -955,5 +1021,16 @@ async function cancelImport() {
 
 .product-detail {
   padding: 10px;
+}
+
+.image-upload-wrapper {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.image-preview {
+  display: flex;
+  align-items: center;
 }
 </style>

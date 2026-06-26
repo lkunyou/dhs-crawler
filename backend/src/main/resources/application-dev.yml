@@ -23,3 +23,5 @@ app:
   crawler:
     script:
       output-dir: E:\01.work\13.carparts\sprider1\thai-auto-parts-crm\backend\target
+  upload:
+    base-path: E:\01.work\13.carparts\sprider1\thai-auto-parts-crm\backend\uploads

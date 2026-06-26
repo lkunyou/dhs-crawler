@@ -45,4 +45,10 @@ public class SystemConfigController {
         systemConfigService.deleteConfig(id);
         return Result.success();
     }
+
+    @PostMapping("/init-defaults")
+    public Result<Void> initDefaults() {
+        systemConfigService.initDefaultConfigs();
+        return Result.success();
+    }
 }

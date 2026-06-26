@@ -36,14 +36,6 @@ spring:
 
   # 邮件配置
   mail:
-    host: smtp.qiye.aliyun.com
-    port: 465
-    host-imap: imap.qiye.aliyun.com
-    port-imap: 993
-    host-smtp: smtp.qiye.aliyun.com
-    port-smtp: 465
-    username: market@carparts-land.com
-    password: VYYxPVJH6JkIQVIt
     protocol: smtp
     properties:
       mail:
@@ -118,3 +110,7 @@ app:
     email-daily: 100
     whatsapp-daily: 50
     linkedin-daily: 100
+  
+  # 上传配置
+  upload:
+    base-path: ./uploads

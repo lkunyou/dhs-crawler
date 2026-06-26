@@ -6,10 +6,12 @@ import com.thaiautoparts.entity.Quotation;
 import com.thaiautoparts.entity.Task;
 import com.thaiautoparts.service.CrmService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/crm")
 @RequiredArgsConstructor
@@ -20,6 +22,8 @@ public class CrmController {
     // 跟进记录
     @PostMapping("/follow-up")
     public Result<FollowUpRecord> addFollowUp(@RequestBody FollowUpRecord record) {
+        log.info("Received follow-up record: companyId={}, outcome={}, followUpType={}",
+            record.getCompanyId(), record.getOutcome(), record.getFollowUpType());
         return Result.success(crmService.addFollowUp(record));
     }
 

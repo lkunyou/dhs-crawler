@@ -150,50 +150,83 @@ function isGroupExpanded(path) {
   return expandedGroups.value.has(path)
 }
 
-const menuItems = [
-  { path: '/dashboard', label: '数据看板', icon: markRaw(DataBoard) },
+const allMenuItems = [
+  { 
+    path: '/dashboard', 
+    label: '数据看板', 
+    icon: markRaw(DataBoard), 
+    roles: ['admin', 'user', 'sales', 'operator'],
+    children: [
+      { path: '/dashboard', label: '数据看板', icon: markRaw(DataBoard), roles: ['admin', 'user', 'sales', 'operator'] },
+      { path: '/analytics', label: '数据分析', icon: markRaw(TrendCharts), roles: ['admin', 'user', 'sales'] }
+    ]
+  },
   { 
     path: '/companies', 
     label: '客户管理', 
     icon: markRaw(UserFilled),
+    roles: ['admin', 'user', 'sales'],
     children: [
-      { path: '/companies', label: '客户列表', icon: markRaw(UserFilled) },
-      { path: '/quotes', label: '报价管理', icon: markRaw(Document) },
-      { path: '/products', label: '产品管理', icon: markRaw(Search) }
+      { path: '/companies', label: '客户列表', icon: markRaw(UserFilled), roles: ['admin', 'user', 'sales'] },
+      { path: '/quotes', label: '报价管理', icon: markRaw(Document), roles: ['admin', 'user', 'sales'] },
+      { path: '/products', label: '产品管理', icon: markRaw(Search), roles: ['admin', 'user', 'sales'] }
     ]
   },
   { 
     path: '/customer-search', 
     label: '客户搜索', 
     icon: markRaw(Search),
+    roles: ['admin', 'operator'],
     children: [
-      { path: '/customer-search', label: '搜索客户', icon: markRaw(Search) },
-      { path: '/crawler', label: '爬虫管理', icon: markRaw(Search) }
+      { path: '/customer-search', label: '搜索客户', icon: markRaw(Search), roles: ['admin', 'operator'] },
+      { path: '/crawler', label: '爬虫管理', icon: markRaw(Search), roles: ['admin', 'operator'] }
     ]
   },
   { 
     path: '/email', 
     label: '邮件管理', 
     icon: markRaw(Message),
+    roles: ['admin', 'user', 'sales'],
     children: [
-      { path: '/inbox', label: '收件箱', icon: markRaw(MessageBox) },
-      { path: '/email-campaign', label: '发送邮件', icon: markRaw(Document) },
-      { path: '/email-marketing', label: '邮件营销', icon: markRaw(Message) },
-      { path: '/email-templates', label: '邮件模板', icon: markRaw(Document) },
-      { path: '/whatsapp', label: 'WhatsApp', icon: markRaw(ChatDotRound) }
+      { path: '/inbox', label: '收件箱', icon: markRaw(MessageBox), roles: ['admin', 'user', 'sales'] },
+      { path: '/email-campaign', label: '发送邮件', icon: markRaw(Document), roles: ['admin', 'user', 'sales'] },
+      { path: '/email-marketing', label: '邮件营销', icon: markRaw(Message), roles: ['admin', 'user', 'sales'] },
+      { path: '/email-templates', label: '邮件模板', icon: markRaw(Document), roles: ['admin', 'user', 'sales'] },
+      { path: '/whatsapp', label: 'WhatsApp', icon: markRaw(ChatDotRound), roles: ['admin', 'user', 'sales'] }
     ]
   },
-  { path: '/analytics', label: '数据分析', icon: markRaw(TrendCharts) },
   { 
     path: '/system-config', 
     label: '系统配置', 
     icon: markRaw(Setting),
+    roles: ['admin'],
     children: [
-      { path: '/user-management', label: '用户管理', icon: markRaw(User) },
-      { path: '/system-config', label: '配置参数', icon: markRaw(Setting) }
+      { path: '/user-management', label: '用户管理', icon: markRaw(User), roles: ['admin'] },
+      { path: '/system-config', label: '配置参数', icon: markRaw(Setting), roles: ['admin'] }
     ]
   }
 ]
+
+// 根据用户角色过滤菜单
+const menuItems = computed(() => {
+  const userRole = userStore.role || 'user'
+  
+  const filterMenu = (items) => {
+    return items
+      .filter(item => item.roles.includes(userRole))
+      .map(item => {
+        if (item.children) {
+          const filteredChildren = item.children.filter(child => child.roles.includes(userRole))
+          if (filteredChildren.length === 0) return null
+          return { ...item, children: filteredChildren }
+        }
+        return item
+      })
+      .filter(item => item !== null)
+  }
+  
+  return filterMenu(allMenuItems)
+})
 
 function handleCommand(command) {
   if (command === 'logout') {

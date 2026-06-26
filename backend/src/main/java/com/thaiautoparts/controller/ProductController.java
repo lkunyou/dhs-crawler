@@ -7,6 +7,7 @@ import com.thaiautoparts.dto.PageResult;
 import com.thaiautoparts.dto.Result;
 import com.thaiautoparts.entity.Product;
 import com.thaiautoparts.service.ProductService;
+import com.thaiautoparts.service.SystemConfigService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ProductController {
 
     private final ProductService productService;
+    private final SystemConfigService systemConfigService;
 
     private final ConcurrentHashMap<String, List<Product>> tempProductStore = new ConcurrentHashMap<>();
 
@@ -156,6 +158,31 @@ public class ProductController {
     public Result<Void> importProductsCancel(@RequestParam("tempId") String tempId) {
         tempProductStore.remove(tempId);
         return Result.success();
+    }
+
+    @PostMapping("/upload-image")
+    public Result<String> uploadImage(@RequestParam("file") MultipartFile file) throws IOException {
+        if (file.isEmpty()) {
+            return Result.error("请选择图片文件");
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            return Result.error("只支持上传图片文件");
+        }
+        String originalFilename = file.getOriginalFilename();
+        String ext = "";
+        if (originalFilename != null && originalFilename.contains(".")) {
+            ext = originalFilename.substring(originalFilename.lastIndexOf("."));
+        }
+        String newFileName = UUID.randomUUID().toString() + ext;
+        // 从配置表获取上传基础路径
+        String uploadBasePath = systemConfigService.getValue("upload_base_path", "./uploads");
+        java.nio.file.Path uploadDir = java.nio.file.Paths.get(uploadBasePath, "products");
+        java.nio.file.Files.createDirectories(uploadDir);
+        java.nio.file.Path filePath = uploadDir.resolve(newFileName);
+        java.nio.file.Files.copy(file.getInputStream(), filePath);
+        String imageUrl = "/uploads/products/" + newFileName;
+        return Result.success(imageUrl);
     }
 
     @Data

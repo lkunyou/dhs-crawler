@@ -5,6 +5,7 @@ import api from '@/utils/request'
 export const useUserStore = defineStore('user', () => {
   const token = ref(localStorage.getItem('token') || '')
   const username = ref(localStorage.getItem('username') || '')
+  const role = ref(localStorage.getItem('role') || '')
 
   function isLoggedIn() {
     return !!token.value
@@ -19,8 +20,10 @@ export const useUserStore = defineStore('user', () => {
       })
       token.value = response.data.token
       username.value = response.data.username
+      role.value = response.data.role || 'user'
       localStorage.setItem('token', token.value)
       localStorage.setItem('username', username.value)
+      localStorage.setItem('role', role.value)
       return response.data
     } catch (error) {
       if (error.response?.status === 401) {
@@ -33,13 +36,16 @@ export const useUserStore = defineStore('user', () => {
   function logout() {
     token.value = ''
     username.value = ''
+    role.value = ''
     localStorage.removeItem('token')
     localStorage.removeItem('username')
+    localStorage.removeItem('role')
   }
 
   return {
     token,
     username,
+    role,
     isLoggedIn,
     login,
     logout

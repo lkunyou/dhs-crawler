@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 from dataclasses import dataclass
 from enum import Enum
+from config_reader import get_config_reader
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('crawler_scheduler')
@@ -32,6 +33,18 @@ class TaskType(Enum):
     TAPAA = "tapaa"
     YELLOW_PAGES = "yellow_pages"
     BATCH = "batch"
+
+# 任务类型配置键映射
+TASK_TYPE_CONFIG_MAP = {
+    TaskType.GOOGLE_SEARCH: "crawler.task.google-search",
+    TaskType.GOOGLE_MAPS: "crawler.task.google-maps",
+    TaskType.LINKEDIN: "crawler.task.linkedin",
+    TaskType.THAI_TRADE: "crawler.task.thai-trade",
+    TaskType.ALIBABA: "crawler.task.alibaba",
+    TaskType.TAPAA: "crawler.task.tapaa",
+    TaskType.YELLOW_PAGES: "crawler.task.yellow-pages",
+    TaskType.BATCH: "crawler.task.batch",
+}
 
 @dataclass
 class CrawlerTask:
@@ -72,6 +85,14 @@ class CrawlerScheduler:
     
     async def submit_task(self, task_type: TaskType, params: Dict = None) -> str:
         """提交爬虫任务"""
+        # 检查任务类型是否启用
+        config_key = TASK_TYPE_CONFIG_MAP.get(task_type)
+        if config_key:
+            config = get_config_reader()
+            if not config.get_bool(config_key, True):
+                logger.warning(f"Task type {task_type.value} is disabled in config, skipping")
+                return None
+        
         task_id = f"{task_type.value}_{int(time.time())}"
         
         task = CrawlerTask(

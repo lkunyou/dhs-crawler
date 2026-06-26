@@ -6,6 +6,7 @@ import com.thaiautoparts.entity.Company;
 import com.thaiautoparts.repository.CompanyMapper;
 import com.thaiautoparts.repository.InboundEmailMapper;
 import com.thaiautoparts.service.EmailReceiverService;
+import com.thaiautoparts.service.SystemConfigService;
 import jakarta.mail.*;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
@@ -29,20 +30,30 @@ public class EmailReceiverServiceImpl implements EmailReceiverService {
 
     private final InboundEmailMapper inboundEmailMapper;
     private final CompanyMapper companyMapper;
+    private final SystemConfigService systemConfigService;
 
-    @Value("${spring.mail.host-imap}")
-    private String mailHostImap;
+    @Value("${spring.mail.host-imap:}")
+    private String mailHostImapYml;
 
     @Value("${spring.mail.port-imap:993}")
-    private int mailPortImap;
+    private int mailPortImapYml;
 
-    @Value("${spring.mail.username}")
-    private String mailUsername;
+    @Value("${spring.mail.username:}")
+    private String mailUsernameYml;
 
-    @Value("${spring.mail.password}")
-    private String mailPassword;
+    @Value("${spring.mail.password:}")
+    private String mailPasswordYml;
+
+    private String getMailConfig(String key, String defaultValue) {
+        return systemConfigService.getValue(key, defaultValue);
+    }
 
     private Session createSession() {
+        String mailHostImap = getMailConfig("mail.host-imap", mailHostImapYml);
+        int mailPortImap = Integer.parseInt(getMailConfig("mail.port-imap", String.valueOf(mailPortImapYml)));
+        String mailUsername = getMailConfig("mail.username", mailUsernameYml);
+        String mailPassword = getMailConfig("mail.password", mailPasswordYml);
+
         Properties props = new Properties();
         props.setProperty("mail.store.protocol", "imap");
         props.setProperty("mail.imap.host", mailHostImap);
@@ -73,7 +84,12 @@ public class EmailReceiverServiceImpl implements EmailReceiverService {
         
         try {
             store = createSession().getStore("imap");
-            store.connect(mailHostImap, mailPortImap, mailUsername, mailPassword);
+            store.connect(
+                getMailConfig("mail.host-imap", mailHostImapYml),
+                Integer.parseInt(getMailConfig("mail.port-imap", String.valueOf(mailPortImapYml))),
+                getMailConfig("mail.username", mailUsernameYml),
+                getMailConfig("mail.password", mailPasswordYml)
+            );
             
             inbox = store.getFolder("INBOX");
             inbox.open(Folder.READ_WRITE);
@@ -162,7 +178,7 @@ public class EmailReceiverServiceImpl implements EmailReceiverService {
         inboundEmail.setCompanyId(companyId);
         inboundEmail.setFromEmail(fromEmail);
         inboundEmail.setFromName(fromName);
-        inboundEmail.setToEmail(mailUsername);
+        inboundEmail.setToEmail(getMailConfig("mail.username", mailUsernameYml));
         inboundEmail.setSubject(subject);
         inboundEmail.setContent(content);
         inboundEmail.setMessageId(messageId);

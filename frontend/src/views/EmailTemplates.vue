@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>邮件模板管理</span>
-          <el-button type="primary" @click="showAddDialog = true">
+          <el-button type="primary" @click="openNewTemplate">
             <el-icon><Plus /></el-icon> 新建模板
           </el-button>
         </div>
@@ -20,30 +20,33 @@
       </div>
     </el-dialog>
 
-    <DialogForm
-      v-model:visible="showAddDialog"
-      :title="isEdit ? '编辑模板' : '新建模板'"
-      width="800px"
-      @submit="handleSave"
-    >
-      <FormField type="input" label="模板名称" prop="templateName" v-model="templateForm.templateName" />
-      <FormField type="input" label="邮件主题" prop="subject" v-model="templateForm.subject" />
-      <FormField type="select" label="分类" prop="category" v-model="templateForm.category" :options="categoryOptions" />
-      <FormField type="number" label="发送序列" prop="daySequence" v-model="templateForm.daySequence" :min="1" :max="30" />
-      <FormField type="textarea" label="邮件内容" prop="content" v-model="templateForm.content" :rows="15" />
-      <FormField type="switch" label="是否启用" prop="isActive" v-model="templateForm.isActive" />
-    </DialogForm>
+    <el-dialog v-model="showAddDialog" :title="isEdit ? '编辑模板' : '新建模板'" width="800px" @close="handleDialogClose">
+      <el-form :model="templateForm" label-width="100px" ref="templateFormRef">
+        <FormField type="input" label="模板名称" prop="templateName" v-model="templateForm.templateName" />
+        <FormField type="input" label="邮件主题" prop="subject" v-model="templateForm.subject" />
+        <FormField type="select" label="分类" prop="category" v-model="templateForm.category" :options="categoryOptions" />
+        <FormField type="number" label="发送序列" prop="daySequence" v-model="templateForm.daySequence" :min="1" :max="30" />
+        <FormField type="textarea" label="邮件内容" prop="content" v-model="templateForm.content" :rows="15" />
+        <FormField type="switch" label="是否启用" prop="isActive" v-model="templateForm.isActive" />
+      </el-form>
+      <template #footer>
+        <el-button @click="showAddDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleSave">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { BaseTable, DialogForm, FormField } from '@/components'
+import { BaseTable, FormField } from '@/components'
+import { getEmailTemplates, createEmailTemplate, updateEmailTemplate, deleteEmailTemplate } from '@/api/email'
 
 const showPreviewDialog = ref(false)
 const showAddDialog = ref(false)
 const isEdit = ref(false)
+const dialogOpening = ref(false)
 const previewTemplate = reactive({ subject: '', content: '' })
 
 const categoryOptions = [
@@ -69,13 +72,7 @@ const columns = [
   ]}
 ]
 
-const templates = ref([
-  { id: 1, templateName: 'Day1-公司介绍', subject: 'Professional Auto Parts Manufacturer from China - [Your Company]', category: 'Cold_Outreach', daySequence: 1, openRate: 42.5, replyRate: 12.3, isActive: true, content: '<p>Dear [Name],</p><p>I hope this email finds you well.</p><p>I am writing to introduce [Your Company]...</p>' },
-  { id: 2, templateName: 'Day3-热销产品', subject: 'Hot Selling Auto Parts for Thai Market - Special Offer', category: 'Product_Promo', daySequence: 3, openRate: 38.2, replyRate: 9.8, isActive: true, content: '<p>Hi [Name],</p><p>Following up on my previous email...</p>' },
-  { id: 3, templateName: 'Day6-OEM案例', subject: 'OEM Partnership Success Story', category: 'OEM_Case', daySequence: 6, openRate: 35.1, replyRate: 8.5, isActive: true, content: '<p>Dear [Name],</p><p>I thought you might be interested...</p>' },
-  { id: 4, templateName: 'Day10-报价引导', subject: 'Exclusive Price List - Auto Parts for Your Review', category: 'Quote', daySequence: 10, openRate: 32.8, replyRate: 15.2, isActive: true, content: '<p>Hi [Name],</p><p>I have prepared a special price list...</p>' },
-  { id: 5, templateName: 'Day15-促销提醒', subject: 'Limited-Time Promotion - Auto Parts Special Deal', category: 'Promotion', daySequence: 15, openRate: 28.5, replyRate: 6.7, isActive: true, content: '<p>Dear [Name],</p><p>This is a friendly reminder...</p>' }
-])
+const templates = ref([])
 
 const templateForm = reactive({
   id: null,
@@ -87,6 +84,52 @@ const templateForm = reactive({
   isActive: true
 })
 
+onMounted(() => {
+  loadTemplates()
+})
+
+async function loadTemplates() {
+  try {
+    const res = await getEmailTemplates()
+    templates.value = res.data || []
+  } catch (e) {
+    ElMessage.error('加载模板失败')
+  }
+}
+
+watch(showAddDialog, (val) => {
+  if (val && !dialogOpening.value) {
+    // Only reset when opening for NEW template (not editing)
+    templateForm.id = null
+    templateForm.templateName = ''
+    templateForm.subject = ''
+    templateForm.content = ''
+    templateForm.category = 'Cold_Outreach'
+    templateForm.daySequence = 1
+    templateForm.isActive = true
+    isEdit.value = false
+  }
+  if (!val) {
+    dialogOpening.value = false
+  }
+})
+
+function handleDialogClose() {
+  // Reset form when dialog closes
+  templateForm.id = null
+  templateForm.templateName = ''
+  templateForm.subject = ''
+  templateForm.content = ''
+  templateForm.category = 'Cold_Outreach'
+  templateForm.daySequence = 1
+  templateForm.isActive = true
+}
+
+function openNewTemplate() {
+  dialogOpening.value = true
+  showAddDialog.value = true
+}
+
 function handlePreviewTemplate(row) {
   previewTemplate.subject = row.subject
   previewTemplate.content = row.content
@@ -94,21 +137,46 @@ function handlePreviewTemplate(row) {
 }
 
 function editTemplate(row) {
-  Object.assign(templateForm, row)
+  dialogOpening.value = true
   isEdit.value = true
+  // Set form data for editing
+  templateForm.id = row.id
+  templateForm.templateName = row.templateName
+  templateForm.subject = row.subject
+  templateForm.content = row.content
+  templateForm.category = row.category
+  templateForm.daySequence = row.daySequence
+  templateForm.isActive = row.isActive
   showAddDialog.value = true
 }
 
-function handleSave() {
-  ElMessage.success(isEdit.value ? '模板已更新' : '模板已创建')
-  showAddDialog.value = false
+async function handleSave() {
+  try {
+    if (templateForm.id) {
+      await updateEmailTemplate(templateForm.id, { ...templateForm })
+      ElMessage.success('模板已更新')
+    } else {
+      await createEmailTemplate({ ...templateForm })
+      ElMessage.success('模板已创建')
+    }
+    showAddDialog.value = false
+    await loadTemplates()
+  } catch (e) {
+    ElMessage.error('保存失败')
+  }
 }
 
 async function deleteTemplate(id) {
   try {
     await ElMessageBox.confirm('确定删除该模板吗?', '提示', { type: 'warning' })
+    await deleteEmailTemplate(id)
     ElMessage.success('删除成功')
-  } catch (e) {}
+    await loadTemplates()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('删除失败')
+    }
+  }
 }
 
 function getCategoryLabel(category) {

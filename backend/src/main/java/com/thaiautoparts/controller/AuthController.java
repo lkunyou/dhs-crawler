@@ -36,13 +36,14 @@ public class AuthController {
             defaultPassword.equals(request.getPassword())) {
             String token = UUID.randomUUID().toString();
             redisTemplate.opsForValue().set("token:" + token, request.getUsername(), 24, TimeUnit.HOURS);
-            return Result.success(new LoginResponse(token, request.getUsername()));
+            return Result.success(new LoginResponse(token, request.getUsername(), "admin"));
         }
         SysUser user = sysUserService.getByUsername(request.getUsername());
         if (user != null && user.getPassword().equals(request.getPassword()) && "active".equals(user.getStatus())) {
             String token = UUID.randomUUID().toString();
             redisTemplate.opsForValue().set("token:" + token, user.getUsername(), 24, TimeUnit.HOURS);
-            return Result.success(new LoginResponse(token, user.getUsername()));
+            String role = user.getRole() != null ? user.getRole() : "user";
+            return Result.success(new LoginResponse(token, user.getUsername(), role));
         }
         return Result.error(401, "用户名或密码错误");
     }

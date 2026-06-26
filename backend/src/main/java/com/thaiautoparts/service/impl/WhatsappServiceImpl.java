@@ -8,6 +8,7 @@ import com.thaiautoparts.entity.WhatsappRecord;
 import com.thaiautoparts.repository.CompanyMapper;
 import com.thaiautoparts.repository.FollowUpRecordMapper;
 import com.thaiautoparts.repository.WhatsappRecordMapper;
+import com.thaiautoparts.service.SystemConfigService;
 import com.thaiautoparts.service.WhatsappService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,12 +30,17 @@ public class WhatsappServiceImpl implements WhatsappService {
     private final WhatsappRecordMapper whatsappRecordMapper;
     private final CompanyMapper companyMapper;
     private final FollowUpRecordMapper followUpRecordMapper;
+    private final SystemConfigService systemConfigService;
     
     @Value("${app.whatsapp.api-url:https://api.whatsapp.com}")
-    private String whatsappApiUrl;
+    private String whatsappApiUrlYml;
     
     @Value("${app.whatsapp.api-token:}")
-    private String whatsappApiToken;
+    private String whatsappApiTokenYml;
+
+    private String getWhatsappConfig(String key, String defaultValue) {
+        return systemConfigService.getValue(key, defaultValue);
+    }
 
     @Override
     @Async

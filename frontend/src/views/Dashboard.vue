@@ -76,7 +76,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import * as echarts from 'echarts'
-import { getGradeStats, getSourceStats, getStatusStats } from '@/api/company'
+import { getDashboardStats, getGradeDistribution, getSourceDistribution, getFunnelData } from '@/api/dashboard'
 
 const stats = ref({
   totalCompanies: 0,
@@ -89,54 +89,110 @@ const gradeChartRef = ref(null)
 const sourceChartRef = ref(null)
 const funnelChartRef = ref(null)
 
+let gradeChart = null
+let sourceChart = null
+let funnelChart = null
+
 onMounted(async () => {
   await loadStats()
   initCharts()
+  window.addEventListener('resize', handleResize)
 })
+
+function handleResize() {
+  gradeChart?.resize()
+  sourceChart?.resize()
+  funnelChart?.resize()
+}
 
 async function loadStats() {
   try {
-    const [gradeRes, sourceRes, statusRes] = await Promise.all([
-      getGradeStats(),
-      getSourceStats(),
-      getStatusStats()
+    const [statsRes, gradeRes, sourceRes, funnelRes] = await Promise.all([
+      getDashboardStats(),
+      getGradeDistribution(),
+      getSourceDistribution(),
+      getFunnelData()
     ])
     
-    // 计算总数
-    stats.value.totalCompanies = gradeRes.data.reduce((sum, item) => sum + item.count, 0)
+    // 更新统计数据
+    if (statsRes.data) {
+      stats.value = {
+        totalCompanies: statsRes.data.totalCompanies || 0,
+        emailsSent: statsRes.data.emailsSent || 0,
+        whatsappSent: statsRes.data.whatsappSent || 0,
+        replies: statsRes.data.replies || 0
+      }
+    }
+    
+    // 更新图表数据
+    if (gradeChart) {
+      gradeChart.setOption({
+        series: [{
+          data: (gradeRes.data || []).map(item => ({
+            value: item.count,
+            name: item.leadGrade || '未分类'
+          }))
+        }]
+      })
+    }
+    
+    if (sourceChart) {
+      sourceChart.setOption({
+        xAxis: {
+          data: (sourceRes.data || []).map(item => item.source || '未知')
+        },
+        series: [{
+          data: (sourceRes.data || []).map(item => item.count)
+        }]
+      })
+    }
+    
+    if (funnelChart) {
+      funnelChart.setOption({
+        series: [{
+          data: (funnelRes.data || []).map(item => ({
+            value: item.count,
+            name: item.status || '未知'
+          }))
+        }]
+      })
+    }
   } catch (e) {
-    console.error('Failed to load stats:', e)
+    console.error('Failed to load dashboard stats:', e)
   }
 }
 
 function initCharts() {
   // 客户等级饼图
-  const gradeChart = echarts.init(gradeChartRef.value)
+  gradeChart = echarts.init(gradeChartRef.value)
   gradeChart.setOption({
-    tooltip: { trigger: 'item', backgroundColor: '#fff', borderColor: '#e0f2fe', textStyle: { color: '#1e293b' } },
+    tooltip: { trigger: 'item', backgroundColor: '#fff', borderColor: '#e0f2ce', textStyle: { color: '#1e293b' } },
     legend: { bottom: '5%', textStyle: { color: '#64748b', fontSize: 12 } },
     series: [{
       name: '客户等级',
       type: 'pie',
       radius: ['45%', '70%'],
-      data: [
-        { value: 15, name: 'S级 - 必须开发', itemStyle: { color: '#2563eb' } },
-        { value: 35, name: 'A级 - 重点跟进', itemStyle: { color: '#3b82f6' } },
-        { value: 80, name: 'B级 - 自动培育', itemStyle: { color: '#60a5fa' } },
-        { value: 120, name: 'C级 - 丢弃', itemStyle: { color: '#bfdbfe' } }
-      ],
-      label: { color: '#1e293b', fontSize: 11 }
+      data: [],
+      itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 2 },
+      label: { color: '#1e293b', fontSize: 11 },
+      emphasis: {
+        itemStyle: {
+          shadowBlur: 10,
+          shadowOffsetX: 0,
+          shadowColor: 'rgba(0, 0, 0, 0.5)'
+        }
+      }
     }]
   })
 
   // 客户来源柱状图
-  const sourceChart = echarts.init(sourceChartRef.value)
+  sourceChart = echarts.init(sourceChartRef.value)
   sourceChart.setOption({
-    tooltip: { trigger: 'axis', backgroundColor: '#fff', borderColor: '#e0f2fe', textStyle: { color: '#1e293b' } },
+    tooltip: { trigger: 'axis', backgroundColor: '#fff', borderColor: '#e0f2ce', textStyle: { color: '#1e293b' } },
     grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
     xAxis: {
       type: 'category',
-      data: ['Google', 'LinkedIn', 'B2B平台', '行业目录', '手动录入'],
+      data: [],
       axisLine: { lineStyle: { color: '#e2e8f0' } },
       axisLabel: { color: '#64748b', fontSize: 11 }
     },
@@ -148,16 +204,16 @@ function initCharts() {
       axisLabel: { color: '#64748b', fontSize: 11 }
     },
     series: [{
-      data: [120, 85, 45, 30, 20],
+      data: [],
       type: 'bar',
       itemStyle: { color: '#3b82f6', borderRadius: [4, 4, 0, 0] }
     }]
   })
 
   // 转化漏斗图
-  const funnelChart = echarts.init(funnelChartRef.value)
+  funnelChart = echarts.init(funnelChartRef.value)
   funnelChart.setOption({
-    tooltip: { trigger: 'item', backgroundColor: '#fff', borderColor: '#e0f2fe', textStyle: { color: '#1e293b' } },
+    tooltip: { trigger: 'item', backgroundColor: '#fff', borderColor: '#e0f2ce', textStyle: { color: '#1e293b' } },
     series: [{
       name: '转化漏斗',
       type: 'funnel',
@@ -166,21 +222,14 @@ function initCharts() {
       bottom: 30,
       width: '70%',
       min: 0,
-      max: 500,
+      max: 100,
       minSize: '0%',
       maxSize: '100%',
       sort: 'descending',
       gap: 1,
       label: { show: true, position: 'inside', color: '#fff', fontSize: 11 },
       itemStyle: { borderColor: '#fff', borderWidth: 1 },
-      data: [
-        { value: 500, name: '新线索', itemStyle: { color: '#1d4ed8' } },
-        { value: 350, name: '已联系', itemStyle: { color: '#2563eb' } },
-        { value: 120, name: '已回复', itemStyle: { color: '#3b82f6' } },
-        { value: 45, name: '已报价', itemStyle: { color: '#60a5fa' } },
-        { value: 20, name: '洽谈中', itemStyle: { color: '#93c5fd' } },
-        { value: 8, name: '已成交', itemStyle: { color: '#bfdbfe' } }
-      ]
+      data: []
     }]
   })
 }

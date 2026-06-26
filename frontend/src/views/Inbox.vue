@@ -40,6 +40,16 @@
               <div class="email-subject">{{ email.subject }}</div>
               <div class="email-preview-text">{{ truncateContent(email.content) }}</div>
             </div>
+            <div class="email-actions" @click.stop>
+              <el-button 
+                type="primary" 
+                size="small" 
+                link 
+                @click="viewEmailDetail(email)"
+              >
+                查看详情
+              </el-button>
+            </div>
           </div>
           
           <div v-if="emails.length === 0" class="empty-state">
@@ -184,7 +194,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Star, Delete, Message, MessageBox, Flag } from '@element-plus/icons-vue'
-import { getInbox, markAsRead, markAsStarred, setPriority, deleteEmail, fetchEmails } from '@/api/email'
+import { getInbox, markAsRead, markAsStarred, setPriority, deleteEmail, fetchEmails, getEmailById } from '@/api/email'
 
 const emails = ref([])
 const selectedEmail = ref(null)
@@ -232,6 +242,22 @@ async function selectEmail(email) {
   if (!email.isRead) {
     await markAsRead(email.id)
     email.isRead = true
+  }
+}
+
+async function viewEmailDetail(email) {
+  // 先标记已读
+  if (!email.isRead) {
+    await markAsRead(email.id)
+    email.isRead = true
+  }
+  // 获取完整邮件内容
+  try {
+    const res = await getEmailById(email.id)
+    selectedEmail.value = res.data
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('加载邮件详情失败')
   }
 }
 
@@ -466,6 +492,13 @@ function truncateContent(content) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.email-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding-left: 8px;
 }
 
 .email-detail {

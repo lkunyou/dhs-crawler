@@ -264,7 +264,7 @@ CREATE TABLE `p_follow_up_record` (
     `next_action` VARCHAR(500) COMMENT '下一步行动',
     `next_action_date` DATE COMMENT '下次行动日期',
     
-    `outcome` ENUM('Positive', 'Neutral', 'Negative', 'No_Response', 'Invalid_Contact') COMMENT '结果',
+    `outcome` ENUM('Positive', 'Neutral', 'Negative', 'No_Response', 'Invalid_Contact', 'Sent', 'Failed') COMMENT '结果',
     `sentiment` ENUM('Positive', 'Neutral', 'Negative') COMMENT '客户情绪',
     
     `attachments` JSON COMMENT '附件列表',
@@ -366,6 +366,7 @@ CREATE TABLE `p_product` (
     `car_model` VARCHAR(200) COMMENT '适用车型',
     `production_date` DATE COMMENT '量产日期',
     `weight` DECIMAL(10,2) COMMENT '重量(g)',
+    `image_url` VARCHAR(500) COMMENT '产品图片URL',
     
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -510,7 +511,7 @@ CREATE TABLE `p_system_config` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
     `config_key` VARCHAR(100) NOT NULL UNIQUE COMMENT '配置键',
     `config_value` TEXT COMMENT '配置值',
-    `config_type` ENUM('String', 'Number', 'Boolean', 'JSON') DEFAULT 'String' COMMENT '值类型',
+    `config_type` ENUM('email', 'search', 'crawler', 'rate-limit', 'String', 'Number', 'Boolean', 'JSON') DEFAULT 'String' COMMENT '配置分类',
     `description` VARCHAR(500) COMMENT '描述',
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统配置表';
@@ -528,7 +529,8 @@ INSERT INTO `p_system_config` (`config_key`, `config_value`, `config_type`, `des
 ('email_follow_up_day_1', '3', 'Number', '邮件跟进间隔-第1次(天)'),
 ('email_follow_up_day_2', '6', 'Number', '邮件跟进间隔-第2次(天)'),
 ('email_follow_up_day_3', '10', 'Number', '邮件跟进间隔-第3次(天)'),
-('email_follow_up_day_4', '15', 'Number', '邮件跟进间隔-第4次(天)');
+('email_follow_up_day_4', '15', 'Number', '邮件跟进间隔-第4次(天)'),
+('upload_base_path', './uploads', 'common', '文件上传基础路径');
 
 -- ============================================
 -- 初始化邮件模板（泰国汽配高回复率模板）

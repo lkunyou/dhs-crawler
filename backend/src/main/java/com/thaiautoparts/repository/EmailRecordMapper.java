@@ -19,4 +19,7 @@ public interface EmailRecordMapper extends BaseMapper<EmailRecord> {
             "GROUP BY company_id" +
             "</script>")
     List<Map<String, Object>> countByCompanyIds(@Param("companyIds") List<Long> companyIds);
+    
+    @Select("SELECT COUNT(*) FROM p_email_record WHERE status = #{status}")
+    Long countByStatus(@Param("status") String status);
 }

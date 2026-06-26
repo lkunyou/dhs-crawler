@@ -11,6 +11,7 @@ import logging
 from typing import List, Dict, Optional
 from dataclasses import dataclass, asdict
 from datetime import datetime
+from config_reader import get_config_reader
 
 # 配置日志
 logging.basicConfig(
@@ -37,7 +38,7 @@ class GoogleSearchCrawler:
     """Google搜索爬虫"""
     
     def __init__(self, serp_api_key: str = None):
-        self.serp_api_key = serp_api_key or os.getenv("SERP_API_KEY", "")
+        self.serp_api_key = serp_api_key or get_config_reader().get('crawler.serp-api-key', '') or os.getenv("SERP_API_KEY", "")
         self.results: List[CompanyData] = []
         
     async def search_companies(

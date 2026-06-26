@@ -57,6 +57,9 @@ public class Product {
 
     private BigDecimal weight;
 
+    @TableField("image_url")
+    private String imageUrl;
+
     @TableField(value = "created_at", fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
 

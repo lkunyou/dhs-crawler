@@ -193,3 +193,11 @@ body {
   opacity: 0;
 }
 </style>
+
+<style>
+/* 主页面左右空隙 */
+.el-main > div {
+  padding-left: 1px !important;
+  padding-right: 1px !important;
+}
+</style>

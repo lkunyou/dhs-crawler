@@ -109,3 +109,40 @@ export function fetchEmails() {
     method: 'post'
   })
 }
+
+export function getEmailTemplates() {
+  return request({
+    url: '/email/templates',
+    method: 'get'
+  })
+}
+
+export function getEmailTemplateById(id) {
+  return request({
+    url: `/email/templates/${id}`,
+    method: 'get'
+  })
+}
+
+export function createEmailTemplate(data) {
+  return request({
+    url: '/email/templates',
+    method: 'post',
+    data
+  })
+}
+
+export function updateEmailTemplate(id, data) {
+  return request({
+    url: `/email/templates/${id}`,
+    method: 'put',
+    data
+  })
+}
+
+export function deleteEmailTemplate(id) {
+  return request({
+    url: `/email/templates/${id}`,
+    method: 'delete'
+  })
+}

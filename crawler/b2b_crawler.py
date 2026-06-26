@@ -10,6 +10,7 @@ import logging
 from typing import List, Dict, Optional
 from dataclasses import dataclass, asdict
 from datetime import datetime
+from config_reader import get_config_reader
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('b2b_crawler')
@@ -133,7 +134,7 @@ class AlibabaBuyerCrawler:
                 "gl": "th",
                 "hl": "en",
                 "num": min(max_results, 100),
-                "api_key": os.getenv("SERP_API_KEY", "")
+                "api_key": get_config_reader().get('crawler.serp-api-key', '') or os.getenv("SERP_API_KEY", "")
             }
             
             response = await client.get("https://serpapi.com/search.json", params=params)
@@ -198,7 +199,7 @@ class IndustryDirectoryCrawler:
                     "q": keyword,
                     "engine": "google",
                     "site": "yellowpages.co.th",
-                    "api_key": os.getenv("SERP_API_KEY", "")
+                    "api_key": get_config_reader().get('crawler.serp-api-key', '') or os.getenv("SERP_API_KEY", "")
                 }
                 
                 response = await client.get("https://serpapi.com/search.json", params=params)
