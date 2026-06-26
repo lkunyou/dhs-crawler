@@ -45,4 +45,10 @@ public class CrawlerController {
     public Result<Map<String, Object>> getStats() {
         return Result.success(crawlerService.getTaskStats());
     }
+
+    @DeleteMapping("/task/{taskId}")
+    public Result<Void> deleteTask(@PathVariable Long taskId) {
+        crawlerService.deleteTask(taskId);
+        return Result.success();
+    }
 }

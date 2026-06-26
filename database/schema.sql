@@ -400,6 +400,7 @@ CREATE TABLE `p_crawler_task` (
     `started_at` DATETIME COMMENT '开始时间',
     `completed_at` DATETIME COMMENT '完成时间',
     `error_message` TEXT,
+    `log_content` TEXT COMMENT '执行日志',
     
     `created_by` BIGINT,
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -636,3 +637,9 @@ CREATE TABLE IF NOT EXISTS `p_inbound_email` (
     INDEX `idx_is_starred` (`is_starred`),
     INDEX `idx_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='收件箱表';
+
+-- ============================================
+-- 为已有表添加新字段
+-- ============================================
+-- 为 p_crawler_task 表添加执行日志字段
+ALTER TABLE `p_crawler_task` ADD COLUMN IF NOT EXISTS `log_content` TEXT COMMENT '执行日志' AFTER `error_message`;

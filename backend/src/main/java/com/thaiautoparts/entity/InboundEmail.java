@@ -40,6 +40,9 @@ public class InboundEmail {
     @TableField("is_starred")
     private Boolean isStarred;
     
+    @TableField("is_replied")
+    private Boolean isReplied;
+    
     @TableField("priority")
     private String priority;
     

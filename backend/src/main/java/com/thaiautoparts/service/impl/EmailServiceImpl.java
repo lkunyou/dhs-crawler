@@ -208,6 +208,62 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
+    @Async
+    public void sendCustomEmail(String toEmail, String subject, String content, boolean isHtml, Long companyId, Long templateId, Long inReplyToEmailId) {
+        if (StrUtil.isBlank(toEmail)) {
+            log.error("Recipient email is empty");
+            return;
+        }
+
+        String trackingId = UUID.randomUUID().toString();
+        EmailRecord record = new EmailRecord();
+        record.setCampaignId(null);
+        record.setCompanyId(companyId);
+        record.setContactId(null);
+        record.setTemplateId(templateId);
+        record.setInReplyToEmailId(inReplyToEmailId);
+        record.setRecipientEmail(toEmail);
+        record.setSubject(subject);
+        record.setContent(content);
+        record.setStatus("Pending");
+        record.setTrackingId(trackingId);
+        emailRecordMapper.insert(record);
+
+        Transport transport = null;
+        try {
+            Session session = createSmtpSession();
+            MimeMessage message = new MimeMessage(session);
+            message.setFrom(new jakarta.mail.internet.InternetAddress(getMailConfig("mail.username", mailUsernameYml)));
+            message.setRecipient(Message.RecipientType.TO, new jakarta.mail.internet.InternetAddress(toEmail));
+            message.setSubject(subject, "UTF-8");
+            message.setContent(content, isHtml ? "text/html; charset=UTF-8" : "text/plain; charset=UTF-8");
+            message.setHeader("X-Tracking-ID", trackingId);
+            
+            transport = session.getTransport();
+            transport.connect();
+            transport.sendMessage(message, message.getAllRecipients());
+            
+            record.setStatus("Sent");
+            record.setSentAt(LocalDateTime.now());
+            emailRecordMapper.updateById(record);
+            log.info("Custom email sent successfully to {}", toEmail);
+        } catch (Exception e) {
+            log.error("Failed to send custom email to {}: {}", toEmail, e.getMessage());
+            record.setStatus("Failed");
+            record.setErrorMessage(e.getMessage());
+            emailRecordMapper.updateById(record);
+        } finally {
+            if (transport != null) {
+                try {
+                    transport.close();
+                } catch (Exception e) {
+                    log.error("Failed to close transport: {}", e.getMessage());
+                }
+            }
+        }
+    }
+
+    @Override
     public List<EmailRecord> getEmailRecords(Long companyId) {
         LambdaQueryWrapper<EmailRecord> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(EmailRecord::getCompanyId, companyId);
@@ -330,5 +386,13 @@ public class EmailServiceImpl implements EmailService {
             
             log.info("Email replied: {}", trackingId);
         }
+    }
+
+    @Override
+    public List<EmailRecord> getRepliesByEmailId(Long emailId) {
+        LambdaQueryWrapper<EmailRecord> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(EmailRecord::getInReplyToEmailId, emailId);
+        wrapper.orderByDesc(EmailRecord::getSentAt);
+        return emailRecordMapper.selectList(wrapper);
     }
 }

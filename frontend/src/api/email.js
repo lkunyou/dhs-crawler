@@ -8,6 +8,21 @@ export function sendEmail(data) {
   })
 }
 
+export function sendCustomEmail(data) {
+  return request({
+    url: '/email/send-custom',
+    method: 'post',
+    data
+  })
+}
+
+export function getRepliesByEmailId(emailId) {
+  return request({
+    url: `/email/replies/${emailId}`,
+    method: 'get'
+  })
+}
+
 export function sendBatchEmail(data) {
   return request({
     url: '/email/send-batch',
@@ -52,6 +67,14 @@ export function getInbox() {
   })
 }
 
+export function getLatestEmails(limit = 20) {
+  return request({
+    url: '/email/inbox/latest',
+    method: 'get',
+    params: { limit }
+  })
+}
+
 export function getUnreadEmails() {
   return request({
     url: '/email/inbox/unread',
@@ -93,6 +116,13 @@ export function setPriority(id, priority) {
     url: `/email/inbox/${id}/priority`,
     method: 'post',
     params: { priority }
+  })
+}
+
+export function markAsReplied(id) {
+  return request({
+    url: `/email/inbox/${id}/replied`,
+    method: 'post'
   })
 }
 

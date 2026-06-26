@@ -191,6 +191,9 @@ public class CrawlerServiceImpl implements CrawlerService {
                 while ((line = reader.readLine()) != null) {
                     log.debug("Crawler output: {}", line);
                     
+                    // Append log to task
+                    appendLog(task.getId(), line);
+                    
                     if (line.startsWith("PROGRESS:")) {
                         int progress = Integer.parseInt(line.substring(9));
                         updateProgress(task.getId(), progress);
@@ -362,6 +365,22 @@ public class CrawlerServiceImpl implements CrawlerService {
     }
 
     @Transactional
+    public void appendLog(Long taskId, String logLine) {
+        CrawlerTask task = crawlerTaskMapper.selectById(taskId);
+        if (task != null) {
+            String timestamp = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            String newLog = "[" + timestamp + "] " + logLine + "\n";
+            String existingLog = task.getLogContent() != null ? task.getLogContent() : "";
+            task.setLogContent(existingLog + newLog);
+            // Don't update keywords/filters fields
+            com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<CrawlerTask> wrapper = 
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<CrawlerTask>()
+                    .set(CrawlerTask::getLogContent, task.getLogContent());
+            crawlerTaskMapper.update(null, wrapper);
+        }
+    }
+
+    @Transactional
     protected void completeTask(Long taskId, String status, String errorMessage) {
         CrawlerTask task = crawlerTaskMapper.selectById(taskId);
         if (task != null) {
@@ -374,5 +393,15 @@ public class CrawlerServiceImpl implements CrawlerService {
             crawlerTaskMapper.updateById(task);
             log.info("Crawler task {} completed with status: {}", taskId, status);
         }
+    }
+
+    @Override
+    @Transactional
+    public void deleteTask(Long taskId) {
+        // 删除任务关联的爬虫结果
+        crawlerResultMapper.delete(new LambdaQueryWrapper<CrawlerResult>().eq(CrawlerResult::getTaskId, taskId));
+        // 删除任务记录
+        crawlerTaskMapper.deleteById(taskId);
+        log.info("Crawler task {} deleted", taskId);
     }
 }

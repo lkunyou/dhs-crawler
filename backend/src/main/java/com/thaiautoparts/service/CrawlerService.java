@@ -12,4 +12,5 @@ public interface CrawlerService {
     List<CrawlerTask> getRunningTasks();
     Map<String, Object> getTaskStats();
     void scheduleCrawlerTask(CrawlerTask task);
+    void deleteTask(Long taskId);
 }

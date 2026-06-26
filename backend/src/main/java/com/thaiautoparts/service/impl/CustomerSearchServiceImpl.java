@@ -157,10 +157,8 @@ public class CustomerSearchServiceImpl implements CustomerSearchService {
         List<Map<String, Object>> results = new ArrayList<>();
         try {
             String query = URLEncoder.encode(keyword + " auto parts Thailand", StandardCharsets.UTF_8);
-            String url = String.format(
-                "https://api.bing.microsoft.com/v7.0/search?q=%s&market=%s-TH&count=20",
-                query, country
-            );
+            String bingUrlTemplate = getSearchConfig("search.bing-url", "https://api.bing.microsoft.com/v7.0/search?q=%s&market=%s-TH&count=20");
+            String url = String.format(bingUrlTemplate, query, country);
 
             HttpHeaders headers = new HttpHeaders();
             headers.set("Ocp-Apim-Subscription-Key", getSearchConfig("search.bing-api-key", bingApiKeyYml));

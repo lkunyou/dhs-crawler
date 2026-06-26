@@ -36,6 +36,25 @@ public class EmailController {
         return Result.success();
     }
 
+    @PostMapping("/send-custom")
+    public Result<Void> sendCustomEmail(@RequestBody SendCustomEmailRequest request) {
+        emailService.sendCustomEmail(
+            request.getToEmail(),
+            request.getSubject(),
+            request.getContent(),
+            request.isHtml(),
+            request.getCompanyId(),
+            request.getTemplateId(),
+            request.getInReplyToEmailId()
+        );
+        return Result.success();
+    }
+
+    @GetMapping("/replies/{emailId}")
+    public Result<List<EmailRecord>> getRepliesByEmailId(@PathVariable Long emailId) {
+        return Result.success(emailService.getRepliesByEmailId(emailId));
+    }
+
     @GetMapping("/records/{companyId}")
     public Result<List<EmailRecord>> getRecords(@PathVariable Long companyId) {
         return Result.success(emailService.getEmailRecords(companyId));
@@ -66,6 +85,11 @@ public class EmailController {
     @GetMapping("/inbox")
     public Result<List<InboundEmail>> getInbox() {
         return Result.success(emailReceiverService.getInbox());
+    }
+
+    @GetMapping("/inbox/latest")
+    public Result<List<InboundEmail>> getLatestEmails(@RequestParam(defaultValue = "20") int limit) {
+        return Result.success(emailReceiverService.getInboxWithLimit(limit));
     }
 
     @GetMapping("/inbox/unread")
@@ -103,6 +127,12 @@ public class EmailController {
     @PostMapping("/inbox/{id}/priority")
     public Result<Void> setPriority(@PathVariable Long id, @RequestParam String priority) {
         emailReceiverService.setPriority(id, priority);
+        return Result.success();
+    }
+
+    @PostMapping("/inbox/{id}/replied")
+    public Result<Void> markAsReplied(@PathVariable Long id) {
+        emailReceiverService.markAsReplied(id);
         return Result.success();
     }
 
@@ -162,5 +192,16 @@ public class EmailController {
     static class SendBatchEmailRequest {
         private List<Long> companyIds;
         private Long templateId;
+    }
+
+    @Data
+    static class SendCustomEmailRequest {
+        private String toEmail;
+        private String subject;
+        private String content;
+        private boolean html;
+        private Long companyId;
+        private Long templateId;
+        private Long inReplyToEmailId;
     }
 }

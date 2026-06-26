@@ -51,6 +51,9 @@ public class CrawlerTask {
     @TableField("error_message")
     private String errorMessage;
     
+    @TableField("log_content")
+    private String logContent;
+    
     @TableField("created_by")
     private Long createdBy;
     

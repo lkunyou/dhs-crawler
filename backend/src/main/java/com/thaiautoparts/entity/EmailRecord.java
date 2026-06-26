@@ -22,6 +22,9 @@ public class EmailRecord {
     @TableField("template_id")
     private Long templateId;
     
+    @TableField("in_reply_to_email_id")
+    private Long inReplyToEmailId;
+    
     @TableField("recipient_email")
     private String recipientEmail;
     

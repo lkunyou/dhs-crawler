@@ -6,6 +6,7 @@
           <span>收件箱</span>
           <div class="header-actions">
             <el-button type="primary" @click="fetchNewEmails" size="small">获取新邮件</el-button>
+            <el-button @click="loadLatest20" size="small">最新20条</el-button>
             <el-button @click="refreshInbox" size="small">刷新</el-button>
           </div>
         </div>
@@ -27,6 +28,16 @@
                 <div class="email-from-wrapper">
                   <span class="email-from">{{ email.fromName || email.fromEmail }}</span>
                   <el-tag 
+                    v-if="email.isReplied"
+                    type="success" 
+                    size="small" 
+                    class="priority-tag"
+                    effect="plain"
+                  >
+                    已回复
+                  </el-tag>
+                  <el-tag 
+                    v-else
                     :type="getPriorityType(email.priority)" 
                     size="small" 
                     class="priority-tag"
@@ -65,6 +76,14 @@
               <div class="detail-header">
                 <h3>{{ selectedEmail.subject }}</h3>
                 <div class="detail-actions">
+                  <el-button type="primary" @click="openReplyDialog(selectedEmail)" size="small">
+                    <el-icon><ChatDotRound /></el-icon>
+                    回复
+                  </el-button>
+                  <el-button @click="loadReplies(selectedEmail.id)" size="small" :type="showReplies ? 'success' : 'default'">
+                    <el-icon><Plus /></el-icon>
+                    回复列表
+                  </el-button>
                   <el-dropdown @command="handlePriorityChange" trigger="click">
                     <el-button size="small">
                       <el-icon><Flag /></el-icon>
@@ -101,9 +120,8 @@
               <div class="info-row">
                 <span class="label">发件人:</span>
                 <span class="value">{{ selectedEmail.fromName || selectedEmail.fromEmail }}</span>
-                <el-tag :type="getPriorityType(selectedEmail.priority)" size="small" style="margin-left: 10px">
-                  {{ getPriorityLabel(selectedEmail.priority) }}
-                </el-tag>
+                <el-tag v-if="selectedEmail.isReplied" type="success" size="small" style="margin-left: 10px">已回复</el-tag>
+                <el-tag v-else :type="getPriorityType(selectedEmail.priority)" size="small" style="margin-left: 10px">{{ getPriorityLabel(selectedEmail.priority) }}</el-tag>
               </div>
               <div class="info-row">
                 <span class="label">收件人:</span>
@@ -115,7 +133,30 @@
               </div>
             </div>
             
-            <div class="email-body" v-html="selectedEmail.content"></div>
+            <div class="email-body" v-html="selectedEmail.content || '<p style=\'color:#999;text-align:center;\'>邮件内容为空</p>'"></div>
+            
+            <!-- 回复列表面板 -->
+            <div v-if="showReplies" class="replies-panel">
+              <div class="replies-header">
+                <span>回复列表 ({{ repliesList.length }})</span>
+                <el-button size="small" @click="showReplies = false">收起</el-button>
+              </div>
+              <div class="replies-list">
+                <div v-if="repliesList.length === 0" class="empty-replies">暂无回复</div>
+                <div 
+                  v-for="reply in repliesList" 
+                  :key="reply.id" 
+                  class="reply-item"
+                  @click="viewReplyDetail(reply)"
+                >
+                  <div class="reply-subject">{{ reply.subject }}</div>
+                  <div class="reply-info">
+                    <span>发给: {{ reply.recipientEmail }}</span>
+                    <span>{{ formatFullTime(reply.sentAt) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </el-card>
         </div>
 
@@ -149,15 +190,18 @@
           </div>
           <div class="info-row">
             <span class="label">级别:</span>
-            <el-tag :type="getPriorityType(dialogEmail.priority)" size="small">
-              {{ getPriorityLabel(dialogEmail.priority) }}
-            </el-tag>
+            <el-tag v-if="dialogEmail.isReplied" type="success" size="small">已回复</el-tag>
+            <el-tag v-else :type="getPriorityType(dialogEmail.priority)" size="small">{{ getPriorityLabel(dialogEmail.priority) }}</el-tag>
           </div>
         </div>
         <el-divider />
         <div class="dialog-email-body" v-html="dialogEmail.content"></div>
       </div>
       <template #footer>
+        <el-button type="primary" @click="openReplyDialog(dialogEmail)">
+          <el-icon><ChatDotRound /></el-icon>
+          回复
+        </el-button>
         <el-dropdown @command="handleDialogPriorityChange" trigger="click" style="margin-right: 10px">
           <el-button>
             <el-icon><Flag /></el-icon>
@@ -187,20 +231,97 @@
         <el-button type="primary" @click="emailDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
+
+    <!-- 回复邮件弹窗 -->
+    <el-dialog
+      v-model="replyDialogVisible"
+      title="回复邮件"
+      width="700px"
+      destroy-on-close
+    >
+      <el-form :model="replyForm" label-width="80px">
+        <el-form-item label="收件人">
+          <el-input v-model="replyForm.toEmail" placeholder="请输入收件人邮箱" />
+        </el-form-item>
+        <el-form-item label="主题">
+          <el-input v-model="replyForm.subject" placeholder="请输入邮件主题" />
+        </el-form-item>
+        <el-form-item label="内容">
+          <el-input
+            v-model="replyForm.content"
+            type="textarea"
+            :rows="10"
+            placeholder="请输入邮件内容"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="replyDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="sendReply" :loading="replyLoading">发送</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 回复详情弹窗 -->
+    <el-dialog
+      v-model="replyDetailVisible"
+      title="回复详情"
+      width="700px"
+      destroy-on-close
+    >
+      <div v-if="selectedReply" class="reply-detail-content">
+        <div class="info-row">
+          <span class="label">主题:</span>
+          <span class="value">{{ selectedReply.subject }}</span>
+        </div>
+        <div class="info-row">
+          <span class="label">发给:</span>
+          <span class="value">{{ selectedReply.recipientEmail }}</span>
+        </div>
+        <div class="info-row">
+          <span class="label">状态:</span>
+          <el-tag :type="selectedReply.status === 'Sent' ? 'success' : 'danger'" size="small">
+            {{ selectedReply.status === 'Sent' ? '已发送' : selectedReply.status }}
+          </el-tag>
+        </div>
+        <div class="info-row">
+          <span class="label">时间:</span>
+          <span class="value">{{ formatFullTime(selectedReply.sentAt) }}</span>
+        </div>
+        <el-divider />
+        <div class="reply-content">{{ selectedReply.content }}</div>
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="replyDetailVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Star, Delete, Message, MessageBox, Flag } from '@element-plus/icons-vue'
-import { getInbox, markAsRead, markAsStarred, setPriority, deleteEmail, fetchEmails, getEmailById } from '@/api/email'
+import { Star, Delete, Message, MessageBox, Flag, ChatDotRound, Plus } from '@element-plus/icons-vue'
+import { sendCustomEmail } from '@/api/email'
+import { getInbox, getLatestEmails, markAsRead, markAsStarred, setPriority, deleteEmail, fetchEmails, getEmailById, markAsReplied, getRepliesByEmailId } from '@/api/email'
 
 const emails = ref([])
 const selectedEmail = ref(null)
 const loading = ref(false)
 const emailDialogVisible = ref(false)
 const dialogEmail = ref(null)
+const replyDialogVisible = ref(false)
+const replyForm = ref({
+  toEmail: '',
+  subject: '',
+  content: '',
+  inReplyToEmailId: null
+})
+const replyLoading = ref(false)
+const replyingToEmail = ref(null)
+const showReplies = ref(false)
+const repliesList = ref([])
+const selectedReply = ref(null)
+const replyDetailVisible = ref(false)
 
 onMounted(() => {
   loadInbox()
@@ -219,8 +340,38 @@ async function loadInbox() {
   }
 }
 
+async function loadReplies(emailId) {
+  try {
+    const res = await getRepliesByEmailId(emailId)
+    repliesList.value = res.data || []
+    showReplies.value = true
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('加载回复列表失败')
+  }
+}
+
+function viewReplyDetail(reply) {
+  selectedReply.value = reply
+  replyDetailVisible.value = true
+}
+
 async function refreshInbox() {
   await loadInbox()
+}
+
+async function loadLatest20() {
+  loading.value = true
+  try {
+    const res = await getLatestEmails(20)
+    emails.value = res.data
+    selectedEmail.value = null
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('加载最新邮件失败')
+  } finally {
+    loading.value = false
+  }
 }
 
 async function fetchNewEmails() {
@@ -254,6 +405,8 @@ async function viewEmailDetail(email) {
   // 获取完整邮件内容
   try {
     const res = await getEmailById(email.id)
+    console.log('Email detail API response:', res)
+    console.log('Email content:', res.data?.content)
     selectedEmail.value = res.data
   } catch (e) {
     console.error(e)
@@ -374,6 +527,56 @@ function truncateContent(content) {
   if (!content) return ''
   const text = content.replace(/<[^>]*>/g, '')
   return text.length > 100 ? text.substring(0, 100) + '...' : text
+}
+
+function openReplyDialog(email) {
+  replyingToEmail.value = email
+  const replyTo = email.fromEmail
+  const subject = email.subject.startsWith('Re:') ? email.subject : 'Re: ' + email.subject
+  const originalContent = email.content ? email.content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>') : ''
+  replyForm.value = {
+    toEmail: replyTo,
+    subject: subject,
+    content: '\n\n\n--- Original Message ---\n' + originalContent,
+    inReplyToEmailId: email.id
+  }
+  replyDialogVisible.value = true
+}
+
+async function sendReply() {
+  if (!replyForm.value.toEmail) {
+    ElMessage.warning('请填写收件人邮箱')
+    return
+  }
+  if (!replyForm.value.content.trim()) {
+    ElMessage.warning('请填写邮件内容')
+    return
+  }
+  replyLoading.value = true
+  try {
+    await sendCustomEmail({
+      toEmail: replyForm.value.toEmail,
+      subject: replyForm.value.subject,
+      content: replyForm.value.content,
+      html: false,
+      inReplyToEmailId: replyForm.value.inReplyToEmailId
+    })
+    // 标记原邮件为已回复
+    if (replyingToEmail.value) {
+      await markAsReplied(replyingToEmail.value.id)
+      replyingToEmail.value.isReplied = true
+      // 同步更新列表中的邮件
+      const email = emails.value.find(e => e.id === replyingToEmail.value.id)
+      if (email) email.isReplied = true
+    }
+    ElMessage.success('回复邮件已发送')
+    replyDialogVisible.value = false
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('发送失败')
+  } finally {
+    replyLoading.value = false
+  }
 }
 </script>
 
@@ -610,5 +813,75 @@ function truncateContent(content) {
   font-size: 14px;
   line-height: 1.8;
   color: #334155;
+}
+
+.replies-panel {
+  border-top: 1px solid #e8f4f8;
+  padding: 16px;
+  background-color: #f8fafc;
+}
+
+.replies-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-weight: 500;
+  color: #334155;
+}
+
+.replies-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.empty-replies {
+  text-align: center;
+  color: #94a3b8;
+  padding: 20px;
+}
+
+.reply-item {
+  padding: 12px;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.reply-item:hover {
+  background-color: #e0f2fe;
+}
+
+.reply-item:last-child {
+  border-bottom: none;
+}
+
+.reply-subject {
+  font-size: 13px;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.reply-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.reply-detail-content {
+  padding: 10px 0;
+}
+
+.reply-content {
+  padding: 16px;
+  background-color: #f8fafc;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #334155;
+  max-height: 400px;
+  overflow-y: auto;
 }
 </style>

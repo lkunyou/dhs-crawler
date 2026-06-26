@@ -198,18 +198,43 @@ public class EmailReceiverServiceImpl implements EmailReceiverService {
     }
 
     private String extractContent(Message message) throws Exception {
-        Object content = message.getContent();
-        if (content instanceof String) {
-            return (String) content;
-        } else if (content instanceof Multipart) {
-            Multipart multipart = (Multipart) content;
+        if (message.isMimeType("text/plain")) {
+            return (String) message.getContent();
+        } else if (message.isMimeType("text/html")) {
+            return (String) message.getContent();
+        } else if (message.isMimeType("multipart/*")) {
+            Multipart multipart = (Multipart) message.getContent();
+            String htmlContent = null;
+            String textContent = null;
+            
             for (int i = 0; i < multipart.getCount(); i++) {
                 BodyPart part = multipart.getBodyPart(i);
-                if ("text/plain".equals(part.getContentType()) || 
-                    "text/html".equals(part.getContentType())) {
-                    return (String) part.getContent();
+                String contentType = part.getContentType().toLowerCase();
+                
+                if (part.isMimeType("text/plain") && textContent == null) {
+                    textContent = (String) part.getContent();
+                } else if (part.isMimeType("text/html") && htmlContent == null) {
+                    htmlContent = (String) part.getContent();
+                } else if (part.isMimeType("multipart/*")) {
+                    // Handle nested multipart
+                    Object nestedContent = part.getContent();
+                    if (nestedContent instanceof Multipart) {
+                        Multipart nestedMultipart = (Multipart) nestedContent;
+                        for (int j = 0; j < nestedMultipart.getCount(); j++) {
+                            BodyPart nestedPart = nestedMultipart.getBodyPart(j);
+                            String nestedType = nestedPart.getContentType().toLowerCase();
+                            if (nestedPart.isMimeType("text/html") && htmlContent == null) {
+                                htmlContent = (String) nestedPart.getContent();
+                            } else if (nestedPart.isMimeType("text/plain") && textContent == null) {
+                                textContent = (String) nestedPart.getContent();
+                            }
+                        }
+                    }
                 }
             }
+            
+            // Prefer HTML content, fallback to plain text
+            return htmlContent != null ? htmlContent : (textContent != null ? textContent : "");
         }
         return "";
     }
@@ -228,6 +253,14 @@ public class EmailReceiverServiceImpl implements EmailReceiverService {
     public List<InboundEmail> getInbox() {
         LambdaQueryWrapper<InboundEmail> wrapper = new LambdaQueryWrapper<>();
         wrapper.orderByDesc(InboundEmail::getCreatedAt);
+        return inboundEmailMapper.selectList(wrapper);
+    }
+
+    @Override
+    public List<InboundEmail> getInboxWithLimit(int limit) {
+        LambdaQueryWrapper<InboundEmail> wrapper = new LambdaQueryWrapper<>();
+        wrapper.orderByDesc(InboundEmail::getCreatedAt);
+        wrapper.last("LIMIT " + limit);
         return inboundEmailMapper.selectList(wrapper);
     }
 
@@ -270,6 +303,16 @@ public class EmailReceiverServiceImpl implements EmailReceiverService {
         InboundEmail email = inboundEmailMapper.selectById(id);
         if (email != null) {
             email.setPriority(priority);
+            inboundEmailMapper.updateById(email);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void markAsReplied(Long id) {
+        InboundEmail email = inboundEmailMapper.selectById(id);
+        if (email != null) {
+            email.setIsReplied(true);
             inboundEmailMapper.updateById(email);
         }
     }

@@ -51,12 +51,37 @@
         </el-tab-pane>
       </el-tabs>
     </el-card>
+
+    <!-- 任务详情弹窗 -->
+    <el-dialog v-model="detailDialogVisible" title="任务详情" width="700px">
+      <el-descriptions :column="2" border v-if="selectedTask">
+        <el-descriptions-item label="任务名称">{{ selectedTask.taskName }}</el-descriptions-item>
+        <el-descriptions-item label="数据源">{{ selectedTask.sourceType }}</el-descriptions-item>
+        <el-descriptions-item label="状态">
+          <el-tag :type="getTaskStatusType(selectedTask.status)">{{ getTaskStatusLabel(selectedTask.status) }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="发现总数">{{ selectedTask.totalFound }}</el-descriptions-item>
+        <el-descriptions-item label="新增公司">{{ selectedTask.newCompanies }}</el-descriptions-item>
+        <el-descriptions-item label="重复数">{{ selectedTask.duplicates }}</el-descriptions-item>
+        <el-descriptions-item label="开始时间">{{ selectedTask.startedAt }}</el-descriptions-item>
+        <el-descriptions-item label="完成时间">{{ selectedTask.completedAt || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="错误信息" :span="2" v-if="selectedTask.errorMessage">
+          <span style="color: #f56c6c">{{ selectedTask.errorMessage }}</span>
+        </el-descriptions-item>
+        <el-descriptions-item label="执行日志" :span="2">
+          <el-input type="textarea" v-model="selectedTask.logContent" :rows="10" readonly resize="none" />
+        </el-descriptions-item>
+      </el-descriptions>
+      <template #footer>
+        <el-button @click="detailDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import api from '../utils/request'
 import { BaseForm, BaseTable, FormField } from '@/components'
 
@@ -112,7 +137,18 @@ const taskHistoryColumns = [
   { prop: 'duplicates', label: '重复数', width: 100 },
   { prop: 'progress', label: '进度', width: 150, type: 'custom', render: (row) => `<el-progress :percentage="${row.progress}" :stroke-width="8" />` },
   { prop: 'startedAt', label: '开始时间', width: 180 },
-  { prop: 'completedAt', label: '完成时间', width: 180 }
+  { prop: 'completedAt', label: '完成时间', width: 180 },
+  { 
+    prop: 'actions', 
+    label: '操作', 
+    width: 180, 
+    fixed: 'right',
+    type: 'button',
+    buttons: [
+      { label: '详情', type: 'primary', size: 'small', handler: (row) => viewDetail(row) },
+      { label: '删除', type: 'danger', size: 'small', handler: (row) => handleDelete(row) }
+    ]
+  }
 ]
 
 const googleForm = reactive({
@@ -132,6 +168,8 @@ const linkedinForm = reactive({
 })
 
 const taskHistory = ref([])
+const detailDialogVisible = ref(false)
+const selectedTask = ref(null)
 
 async function loadTaskHistory() {
   try {
@@ -230,6 +268,32 @@ function getTaskStatusType(status) {
 function getTaskStatusLabel(status) {
   const labels = { Pending: '待执行', Running: '执行中', Completed: '已完成', Failed: '失败', Paused: '已暂停' }
   return labels[status] || status
+}
+
+function viewDetail(task) {
+  selectedTask.value = task
+  detailDialogVisible.value = true
+}
+
+async function deleteTask(task) {
+  try {
+    await ElMessageBox.confirm('确定要删除该任务吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await api.delete(`/crawler/task/${task.id}`)
+    ElMessage.success('删除成功')
+    loadTaskHistory()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('删除失败: ' + (e.response?.data?.message || e.message))
+    }
+  }
+}
+
+function handleDelete(task) {
+  deleteTask(task)
 }
 </script>
 
