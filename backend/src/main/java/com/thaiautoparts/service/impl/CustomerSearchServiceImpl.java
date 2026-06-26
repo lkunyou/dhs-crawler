@@ -53,6 +53,8 @@ public class CustomerSearchServiceImpl implements CustomerSearchService {
                 return searchWithBrave(keyword, country);
             case "bing":
                 return searchWithBing(keyword, country);
+            case "duckduckgo":
+                return searchWithDuckDuckGo(keyword, country);
             case "linkedin":
                 return searchWithLinkedIn(keyword, country);
             case "yellowpages":
@@ -191,6 +193,67 @@ public class CustomerSearchServiceImpl implements CustomerSearchService {
             log.error("Bing搜索失败", e);
         }
         return results;
+    }
+
+    private List<Map<String, Object>> searchWithDuckDuckGo(String keyword, String country) {
+        List<Map<String, Object>> results = new ArrayList<>();
+        try {
+            String query = URLEncoder.encode(keyword + " auto parts Thailand", StandardCharsets.UTF_8);
+            String url = String.format(
+                "https://api.duckduckgo.com/?q=%s&format=json&no_redirect=1",
+                query
+            );
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+            headers.set("Accept", "application/json");
+
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
+            Map<String, Object> body = response.getBody();
+
+            if (body != null && body.containsKey("RelatedTopics")) {
+                List<Map<String, Object>> relatedTopics = (List<Map<String, Object>>) body.get("RelatedTopics");
+                for (Map<String, Object> item : relatedTopics) {
+                    if (item.containsKey("Text") && item.containsKey("FirstURL")) {
+                        Map<String, Object> company = new HashMap<>();
+                        String text = (String) item.get("Text");
+                        String firstUrl = (String) item.get("FirstURL");
+                        
+                        // 尝试从URL提取域名作为公司名
+                        String companyName = extractDomainFromUrl(firstUrl);
+                        company.put("companyName", companyName);
+                        company.put("website", firstUrl);
+                        company.put("description", text);
+                        company.put("source", "DuckDuckGo");
+                        company.put("country", country);
+                        company.put("searchKeyword", keyword);
+
+                        extractContactInfo(company, text);
+
+                        results.add(company);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("DuckDuckGo搜索失败", e);
+        }
+        return results;
+    }
+
+    private String extractDomainFromUrl(String url) {
+        try {
+            if (url != null && url.startsWith("http")) {
+                java.net.URL parsedUrl = new java.net.URL(url);
+                String host = parsedUrl.getHost();
+                if (host != null) {
+                    return host.replace("www.", "");
+                }
+            }
+        } catch (Exception e) {
+            // ignore
+        }
+        return url;
     }
 
     private List<Map<String, Object>> searchWithLinkedIn(String keyword, String country) {

@@ -26,6 +26,7 @@
             <el-option label="Brave Search (推荐)" value="brave" />
             <el-option label="SerpAPI" value="serpapi" />
             <el-option label="Bing" value="bing" />
+            <el-option label="DuckDuckGo" value="duckduckgo" />
             <el-option label="LinkedIn" value="linkedin" />
             <el-option label="Yellow Pages" value="yellowpages" />
           </el-select>
