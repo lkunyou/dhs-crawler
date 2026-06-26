@@ -30,4 +30,9 @@ public class CustomerSearchController {
             @RequestParam(defaultValue = "TH") String country) {
         return Result.success(customerSearchService.batchSearchCompanies(keywords, source, country));
     }
+
+    @GetMapping("/fetch-url")
+    public Result<Map<String, Object>> fetchUrl(@RequestParam String url) {
+        return Result.success(customerSearchService.fetchCompanyFromUrl(url));
+    }
 }

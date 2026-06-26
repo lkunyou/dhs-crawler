@@ -24,3 +24,11 @@ export function importCompany(data) {
     data
   })
 }
+
+export function fetchUrl(url, keyword) {
+  return request({
+    url: '/customer-search/fetch-url',
+    method: 'get',
+    params: { url, keyword }
+  })
+}

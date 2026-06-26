@@ -21,4 +21,11 @@ public interface CustomerSearchService {
      * @return 搜索结果列表
      */
     List<Map<String, Object>> batchSearchCompanies(List<String> keywords, String source, String country);
+
+    /**
+     * 从URL获取并解析公司信息
+     * @param url 网站URL
+     * @return 解析出的公司信息
+     */
+    Map<String, Object> fetchCompanyFromUrl(String url);
 }

@@ -322,6 +322,84 @@ public class CustomerSearchServiceImpl implements CustomerSearchService {
         return results;
     }
 
+    @Override
+    public Map<String, Object> fetchCompanyFromUrl(String url) {
+        Map<String, Object> company = new HashMap<>();
+        try {
+            if (url == null || url.isEmpty()) {
+                throw new IllegalArgumentException("URL不能为空");
+            }
+
+            // 确保URL有协议头
+            if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                url = "https://" + url;
+            }
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
+            headers.set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+            headers.set("Accept-Language", "en-US,en;q=0.5");
+
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+
+            String htmlContent = response.getBody();
+            if (htmlContent == null || htmlContent.isEmpty()) {
+                throw new RuntimeException("页面内容为空");
+            }
+
+            // 提取网站标题
+            String title = extractTitle(htmlContent);
+            company.put("companyName", title);
+
+            // 提取meta描述
+            String description = extractMetaDescription(htmlContent);
+            if (description != null) {
+                company.put("description", description);
+            }
+
+            // 提取联系信息
+            extractContactInfo(company, description);
+
+            // 从URL提取域名作为网站
+            String domain = extractDomainFromUrl(url);
+            company.put("website", url);
+            company.put("source", "URL导入");
+            company.put("searchKeyword", domain);
+
+            log.info("成功从URL {} 提取公司信息: {}", url, title);
+
+        } catch (Exception e) {
+            log.error("从URL {} 获取公司信息失败", url, e);
+            throw new RuntimeException("获取页面失败: " + e.getMessage());
+        }
+        return company;
+    }
+
+    private String extractTitle(String html) {
+        Pattern pattern = Pattern.compile("<title[^>]*>([^<]+)</title>", Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(html);
+        if (matcher.find()) {
+            return matcher.group(1).trim();
+        }
+        return null;
+    }
+
+    private String extractMetaDescription(String html) {
+        Pattern pattern = Pattern.compile("<meta[^>]*name=[\"']description[\"'][^>]*content=[\"']([^\"']+)[\"']", Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(html);
+        if (matcher.find()) {
+            return matcher.group(1).trim();
+        }
+        // 尝试另一种格式
+        pattern = Pattern.compile("<meta[^>]*content=[\"']([^\"']+)[\"'][^>]*name=[\"']description[\"']", Pattern.CASE_INSENSITIVE);
+        matcher = pattern.matcher(html);
+        if (matcher.find()) {
+            return matcher.group(1).trim();
+        }
+        return null;
+    }
+
     private void extractContactInfo(Map<String, Object> company, String text) {
         if (text == null) return;
 

@@ -5,7 +5,7 @@
         <div class="card-header">
           <span>客户搜索</span>
           <div class="header-actions">
-            <el-tag type="info">支持 SerpAPI / Brave Search / Bing / LinkedIn / Yellow Pages</el-tag>
+            <el-tag type="info">支持 SerpAPI / Brave / Bing / DuckDuckGo / LinkedIn / Yellow Pages / URL导入</el-tag>
           </div>
         </div>
       </template>
@@ -46,6 +46,26 @@
           <el-button @click="handleReset">重置</el-button>
         </el-form-item>
       </el-form>
+
+      <!-- URL导入区域 -->
+      <el-collapse v-model="activeCollapse" style="margin-bottom: 20px">
+        <el-collapse-item title="URL导入" name="url">
+          <el-form :inline="true">
+            <el-form-item label="网站URL">
+              <el-input
+                v-model="urlInput"
+                placeholder="请输入网站URL，例如: https://example.com"
+                style="width: 400px"
+                clearable
+                @keyup.enter="handleFetchUrl"
+              />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" @click="handleFetchUrl" :loading="fetchingUrl">获取内容</el-button>
+            </el-form-item>
+          </el-form>
+        </el-collapse-item>
+      </el-collapse>
 
       <!-- 批量搜索 -->
       <el-collapse v-model="activeCollapse" style="margin-bottom: 20px">
@@ -155,17 +175,43 @@
         <el-button type="primary" @click="confirmImport">确认导入</el-button>
       </template>
     </el-dialog>
+
+    <!-- URL预览弹窗 -->
+    <el-dialog v-model="urlPreviewVisible" title="URL内容预览" width="600px" destroy-on-close>
+      <div v-if="urlPreviewData">
+        <el-descriptions :column="1" border>
+          <el-descriptions-item label="公司名称">{{ urlPreviewData.companyName || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="官网">
+            <el-link v-if="urlPreviewData.website" :href="urlPreviewData.website" target="_blank" type="primary">
+              {{ urlPreviewData.website }}
+            </el-link>
+            <span v-else>-</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="邮箱">{{ urlPreviewData.email || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="电话">{{ urlPreviewData.phone || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="描述">{{ urlPreviewData.description || '-' }}</el-descriptions-item>
+        </el-descriptions>
+      </div>
+      <template #footer>
+        <el-button @click="urlPreviewVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmImportFromUrl">确认导入</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { searchCompanies, batchSearchCompanies, importCompany } from '@/api/customerSearch'
+import { searchCompanies, batchSearchCompanies, importCompany, fetchUrl } from '@/api/customerSearch'
 
 const searching = ref(false)
+const fetchingUrl = ref(false)
 const activeCollapse = ref([])
 const batchKeywords = ref('')
+const urlInput = ref('')
+const urlPreviewData = ref(null)
+const urlPreviewVisible = ref(false)
 const searchResults = ref([])
 const selectedRows = ref([])
 const importDialogVisible = ref(false)
@@ -237,6 +283,41 @@ function handleReset() {
   searchResults.value = []
   selectedRows.value = []
   batchKeywords.value = ''
+}
+
+async function handleFetchUrl() {
+  const url = urlInput.value.trim()
+  if (!url) {
+    ElMessage.warning('请输入URL地址')
+    return
+  }
+  fetchingUrl.value = true
+  try {
+    const res = await fetchUrl(url)
+    urlPreviewData.value = res.data
+    urlPreviewVisible.value = true
+  } catch (e) {
+    ElMessage.error('获取URL内容失败: ' + (e.message || '请检查URL是否正确'))
+    console.error(e)
+  } finally {
+    fetchingUrl.value = false
+  }
+}
+
+function confirmImportFromUrl() {
+  if (!urlPreviewData.value) return
+  Object.assign(importForm, {
+    companyName: urlPreviewData.value.companyName || '',
+    website: urlPreviewData.value.website || '',
+    email: urlPreviewData.value.email || '',
+    phone: urlPreviewData.value.phone || '',
+    source: urlPreviewData.value.source || 'URL导入',
+    country: urlPreviewData.value.country || 'TH',
+    companyType: 'Other',
+    description: urlPreviewData.value.description || ''
+  })
+  urlPreviewVisible.value = false
+  importDialogVisible.value = true
 }
 
 function handleSelectionChange(rows) {
