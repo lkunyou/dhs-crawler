@@ -141,6 +141,9 @@ public class Company {
     @TableField("development_email")
     private String developmentEmail;
     
+    @TableField("development_email_template")
+    private String developmentEmailTemplate;
+    
     @TableField(value = "created_at", fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
     

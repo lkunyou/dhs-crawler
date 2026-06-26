@@ -94,10 +94,13 @@
         <el-form-item v-if="selectedCompany" label="客户信息">
           <el-card size="small">
             <div><strong>公司名称：</strong>{{ selectedCompany.companyName }}</div>
-            <div><strong>邮箱：</strong>{{ selectedCompany.email || '-' }}</div>
             <div><strong>电话：</strong>{{ selectedCompany.phone || '-' }}</div>
             <div><strong>客户等级：</strong>{{ selectedCompany.leadGrade || '-' }}</div>
           </el-card>
+        </el-form-item>
+        
+        <el-form-item label="收件人邮箱" required>
+          <el-input v-model="emailForm.toEmail" placeholder="收件人邮箱" style="width: 100%" />
         </el-form-item>
         
         <el-form-item v-if="emailForm.targetType === 'grade'" label="客户等级">
@@ -115,13 +118,18 @@
           </el-select>
         </el-form-item>
         
-        <el-form-item label="预览">
-          <div class="email-preview">
-            <div v-if="emailForm.templateId" class="preview-header">
-              <strong>主题:</strong> {{ templates.find(t => t.id === emailForm.templateId)?.subject || '-' }}
-            </div>
-            <div class="preview-content" v-html="emailPreview"></div>
-          </div>
+        <el-form-item label="邮件主题">
+          <el-input v-model="emailForm.subject" placeholder="邮件主题" style="width: 100%" />
+        </el-form-item>
+        
+        <el-form-item label="邮件内容">
+          <el-input
+            v-model="emailForm.content"
+            type="textarea"
+            :rows="12"
+            placeholder="邮件内容"
+            style="width: 100%"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -186,7 +194,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { sendEmail, sendBatchEmail, getAllEmailRecords, getEmailTemplates } from '@/api/email'
+import { sendEmail, sendBatchEmail, sendCustomEmail, getAllEmailRecords, getEmailTemplates } from '@/api/email'
 import { getCompanies } from '@/api/company'
 
 const route = useRoute()
@@ -216,10 +224,12 @@ const emailForm = reactive({
   targetType: 'single',
   companyId: null,
   gradeFilter: '',
-  templateId: null
+  templateId: null,
+  toEmail: '',
+  subject: '',
+  content: ''
 })
 
-const emailPreview = ref('')
 const companies = ref([])
 const selectedCompany = ref(null)
 const selectedRecord = ref(null)
@@ -303,44 +313,62 @@ function handleReset() {
 }
 
 function openSendDialog() {
+  emailForm.toEmail = ''
+  emailForm.subject = ''
+  emailForm.content = ''
   sendDialogVisible.value = true
 }
 
 function handleTargetTypeChange() {
   emailForm.companyId = null
   emailForm.gradeFilter = ''
+  emailForm.toEmail = ''
+  emailForm.subject = ''
+  emailForm.content = ''
   selectedCompany.value = null
 }
 
 function handleCompanySelect(companyId) {
   selectedCompany.value = companies.value.find(c => c.id === companyId) || null
+  if (selectedCompany.value) {
+    emailForm.toEmail = selectedCompany.value.email || ''
+    emailForm.subject = selectedCompany.value.emailSubject || ''
+    emailForm.content = selectedCompany.value.developmentEmailTemplate || selectedCompany.value.developmentEmail || ''
+  }
 }
 
 function handleTemplateChange() {
   const template = templates.value.find(t => t.id === emailForm.templateId)
   if (template) {
-    emailPreview.value = template.content || ''
-  } else {
-    emailPreview.value = ''
+    emailForm.subject = template.subject || emailForm.subject
+    emailForm.content = template.content || emailForm.content
   }
 }
 
 async function handleSend() {
-  if (!emailForm.templateId) {
-    ElMessage.warning('请选择邮件模板')
+  if (!emailForm.toEmail.trim()) {
+    ElMessage.warning('请填写收件人邮箱')
     return
   }
   
-  if (emailForm.targetType === 'single' && !emailForm.companyId) {
-    ElMessage.warning('请选择客户')
+  if (!emailForm.subject.trim()) {
+    ElMessage.warning('请填写邮件主题')
+    return
+  }
+  
+  if (!emailForm.content.trim()) {
+    ElMessage.warning('请填写邮件内容')
     return
   }
   
   sending.value = true
   try {
-    await sendEmail({
+    await sendCustomEmail({
+      toEmail: emailForm.toEmail,
+      subject: emailForm.subject,
+      content: emailForm.content,
+      html: false,
       companyId: emailForm.companyId,
-      contactId: null,
       templateId: emailForm.templateId
     })
     ElMessage.success('邮件发送任务已创建')

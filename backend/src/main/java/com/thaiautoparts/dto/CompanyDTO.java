@@ -31,4 +31,7 @@ public class CompanyDTO {
     private Integer emailCount;
     private Integer whatsappCount;
     private Integer quoteCount;
+    
+    private String emailSubject;
+    private String developmentEmailTemplate;
 }
