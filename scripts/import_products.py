@@ -118,7 +118,7 @@ for i, row in enumerate(rows, 1):
 );""")
 
 sql_content = '\n\n'.join(sql_lines)
-sql_file = r'e:\01.work\13.carparts\sprider1\thai-auto-parts-crm\database\import_products.sql'
+sql_file = r'/database/import_products.sql'
 with open(sql_file, 'w', encoding='utf-8') as f:
     f.write(sql_content)
 

@@ -75,7 +75,7 @@ try:
     cursor.execute("SET CHARACTER SET utf8mb4")
     cursor.execute("SET FOREIGN_KEY_CHECKS=0")
     
-    with open(r'E:\01.work\13.carparts\sprider1\thai-auto-parts-crm\database\schema.sql', 'r', encoding='utf-8') as f:
+    with open(r'/database/schema.sql', 'r', encoding='utf-8') as f:
         sql_content = f.read()
     
     # 替换不兼容的排序规则

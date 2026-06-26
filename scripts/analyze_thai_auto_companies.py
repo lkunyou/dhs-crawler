@@ -970,7 +970,7 @@ print("""
    C级客户: 作为潜在客户储备，建立初步联系
 """)
 
-output_file = 'e:\\01.work\\13.carparts\\sprider1\\thai-auto-parts-crm\\thai_auto_companies_report.xlsx'
+output_file = '/scripts/thai_auto_companies_report.xlsx'
 with pd.ExcelWriter(output_file) as writer:
     df.to_excel(writer, sheet_name='完整客户列表', index=False)
     priority_a.to_excel(writer, sheet_name='A级优先客户', index=False)
