@@ -1,21 +1,22 @@
 <template>
   <div class="base-table">
-    <el-table
-      :data="data"
-      :loading="loading"
-      :stripe="stripe"
-      :border="border"
-      :size="size"
-      :highlight-current-row="highlightCurrentRow"
-      :show-summary="showSummary"
-      :summary-method="summaryMethod"
-      :max-height="maxHeight"
-      ref="tableRef"
-      @selection-change="handleSelectionChange"
-      @current-change="handleCurrentChange"
-      @row-click="handleRowClick"
-      class="table-content"
-    >
+    <div class="table-scroll-wrapper">
+      <el-table
+        :data="data"
+        :loading="loading"
+        :stripe="stripe"
+        :border="border"
+        :size="size"
+        :highlight-current-row="highlightCurrentRow"
+        :show-summary="showSummary"
+        :summary-method="summaryMethod"
+        :max-height="maxHeight"
+        ref="tableRef"
+        @selection-change="handleSelectionChange"
+        @current-change="handleCurrentChange"
+        @row-click="handleRowClick"
+        class="table-content"
+      >
       <template v-if="showSelection">
         <el-table-column type="selection" width="55" fixed="left" />
       </template>
@@ -57,7 +58,11 @@
               </el-button>
             </template>
             <template v-else-if="column.type === 'custom' && column.render">
-              {{ column.render(row, $index) }}
+              <span
+                v-html="column.render(row, $index)"
+                :style="column.onClick ? 'cursor:pointer' : ''"
+                @click="column.onClick && column.onClick(row, $index)"
+              ></span>
             </template>
             <template v-else>
               {{ row[column.prop] }}
@@ -65,7 +70,8 @@
           </slot>
         </template>
       </el-table-column>
-    </el-table>
+      </el-table>
+    </div>
 
     <template v-if="showPagination && pagination">
       <el-pagination
@@ -153,8 +159,14 @@ defineExpose({
   flex-direction: column;
 }
 
+.table-scroll-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
 .table-content {
   flex: 1;
+  min-width: max-content;
 }
 
 .pagination {

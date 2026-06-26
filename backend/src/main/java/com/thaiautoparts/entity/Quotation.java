@@ -5,6 +5,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @TableName("p_quotation")
@@ -64,4 +65,7 @@ public class Quotation {
     
     @TableField(value = "updated_at", fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updatedAt;
+
+    @TableField(exist = false)
+    private List<QuotationItem> items;
 }

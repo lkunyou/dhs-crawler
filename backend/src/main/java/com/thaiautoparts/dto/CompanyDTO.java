@@ -27,4 +27,8 @@ public class CompanyDTO {
     private String source;
     private String status;
     private List<ContactPersonDTO> contacts;
+
+    private Integer emailCount;
+    private Integer whatsappCount;
+    private Integer quoteCount;
 }

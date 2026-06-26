@@ -88,6 +88,14 @@ export function markAsStarred(id, starred) {
   })
 }
 
+export function setPriority(id, priority) {
+  return request({
+    url: `/email/inbox/${id}/priority`,
+    method: 'post',
+    params: { priority }
+  })
+}
+
 export function deleteEmail(id) {
   return request({
     url: `/email/inbox/${id}`,

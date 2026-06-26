@@ -1,5 +1,6 @@
 package com.thaiautoparts.service;
 
+import com.thaiautoparts.dto.PageResult;
 import com.thaiautoparts.entity.EmailRecord;
 import java.util.List;
 import java.util.Map;
@@ -9,6 +10,7 @@ public interface EmailService {
     void sendBatchEmail(List<Long> companyIds, Long templateId);
     List<EmailRecord> getEmailRecords(Long companyId);
     List<EmailRecord> getAllEmailRecords();
+    PageResult<EmailRecord> getAllEmailRecords(int page, int size, String email, String username, String startDate, String endDate);
     Map<String, Object> getEmailStats();
     void handleEmailOpened(String trackingId);
     void handleEmailReplied(String trackingId, String replyContent);

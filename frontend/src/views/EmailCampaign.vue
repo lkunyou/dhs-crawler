@@ -3,102 +3,205 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>邮件营销活动</span>
-          <el-button type="primary" @click="refreshRecords" size="small">刷新记录</el-button>
+          <span>发送邮件</span>
+          <el-button type="primary" @click="openSendDialog" size="small">发送邮件</el-button>
         </div>
       </template>
 
-      <el-row :gutter="20">
-        <el-col :span="16">
-          <el-card>
-            <template #header>发送邮件</template>
-            <el-form :model="emailForm" label-width="100px">
-              <el-form-item label="目标客户" required>
-                <el-select v-model="emailForm.targetType" @change="handleTargetTypeChange" placeholder="选择发送方式">
-                  <el-option label="单个客户" value="single" />
-                  <el-option label="客户等级筛选" value="grade" />
-                  <el-option label="全部客户" value="all" />
-                </el-select>
-              </el-form-item>
-              
-              <el-form-item v-if="emailForm.targetType === 'single'" label="选择客户" required>
-                <el-select v-model="emailForm.companyId" filterable placeholder="搜索客户" style="width: 100%">
-                  <el-option v-for="c in companies" :key="c.id" :label="c.companyName" :value="c.id" />
-                </el-select>
-              </el-form-item>
-              
-              <el-form-item v-if="emailForm.targetType === 'grade'" label="客户等级">
-                <el-select v-model="emailForm.gradeFilter" placeholder="选择等级">
-                  <el-option label="S级" value="S" />
-                  <el-option label="A级" value="A" />
-                  <el-option label="B级" value="B" />
-                  <el-option label="S/A级" value="SA" />
-                </el-select>
-              </el-form-item>
-              
-              <el-form-item label="邮件模板" required>
-                <el-select v-model="emailForm.templateId" @change="handleTemplateChange" placeholder="选择模板" style="width: 100%">
-                  <el-option v-for="t in templates" :key="t.id" :label="t.templateName" :value="t.id" />
-                </el-select>
-              </el-form-item>
-              
-              <el-form-item label="预览">
-                <div class="email-preview" v-html="emailPreview"></div>
-              </el-form-item>
-              
-              <el-form-item>
-                <el-button type="primary" @click="handleSend" :loading="sending">发送邮件</el-button>
-                <el-button @click="handleBatchSend" :loading="sending" v-if="emailForm.targetType !== 'single'">批量发送</el-button>
-              </el-form-item>
-            </el-form>
-          </el-card>
+      <!-- 查询条件 -->
+      <el-row :gutter="20" class="search-row">
+        <el-col :span="6">
+          <el-input v-model="searchForm.email" placeholder="按邮箱查询" clearable />
         </el-col>
-
+        <el-col :span="6">
+          <el-input v-model="searchForm.username" placeholder="按用户名查询" clearable />
+        </el-col>
         <el-col :span="8">
-          <el-card>
-            <template #header>邮件模板列表</template>
-            <el-timeline>
-              <el-timeline-item v-for="t in templates" :key="t.id" :timestamp="`第${t.daySequence}天`" placement="top">
-                <el-card>
-                  <h4>{{ t.templateName }}</h4>
-                  <p>{{ t.subject }}</p>
-                  <el-tag size="small">{{ t.category }}</el-tag>
-                </el-card>
-              </el-timeline-item>
-            </el-timeline>
-          </el-card>
+          <el-date-picker
+            v-model="searchForm.dateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            style="width: 100%"
+          />
+        </el-col>
+        <el-col :span="4">
+          <el-button type="primary" @click="handleSearch">查询</el-button>
+          <el-button @click="handleReset">重置</el-button>
         </el-col>
       </el-row>
 
-      <el-card style="margin-top: 20px">
-        <template #header>发送记录</template>
-        <el-table :data="sendRecords" border>
-          <el-table-column prop="recipientEmail" label="收件人" width="200" />
-          <el-table-column prop="subject" label="主题" min-width="200" />
-          <el-table-column prop="status" label="状态" width="120">
-            <template #default="{ row }">
-              <el-tag :type="getRecordStatusType(row.status)">{{ getRecordStatusLabel(row.status) }}</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="sentAt" label="发送时间" width="180" />
-          <el-table-column prop="openedAt" label="打开时间" width="180" />
-          <el-table-column prop="repliedAt" label="回复时间" width="180" />
-        </el-table>
-      </el-card>
+      <!-- 发送记录列表 -->
+      <el-table :data="sendRecords" border class="records-table">
+        <el-table-column type="index" label="序号" width="60" />
+        <el-table-column prop="recipientEmail" label="收件人" min-width="250">
+          <template #default="{ row }">
+            <div style="font-weight: 500;">{{ row.recipientEmail }}</div>
+            <div v-if="row.recipientName">
+              <el-link type="primary" style="font-size: 12px;" @click="viewRecipient(row)">{{ row.recipientName }}</el-link>
+            </div>
+            <div v-if="row.companyName" style="font-size: 12px; color: #909399;">{{ row.companyName }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="subject" label="邮件主题" min-width="200" />
+        <el-table-column prop="status" label="状态" width="100">
+          <template #default="{ row }">
+            <el-tag :type="getRecordStatusType(row.status)">{{ getRecordStatusLabel(row.status) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="sentAt" label="发送时间" width="180" />
+        <el-table-column prop="openedAt" label="打开时间" width="180" />
+        <el-table-column prop="repliedAt" label="回复时间" width="180" />
+        <el-table-column label="操作" width="100" fixed="right">
+          <template #default="{ row }">
+            <el-button type="primary" size="small" @click="viewDetail(row)">查看详情</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <!-- 分页 -->
+      <div class="pagination">
+        <el-pagination
+          v-model:current-page="pagination.page"
+          v-model:page-size="pagination.size"
+          :total="pagination.total"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="loadRecords"
+          @current-change="loadRecords"
+        />
+      </div>
     </el-card>
+
+    <!-- 发送邮件弹窗 -->
+    <el-dialog v-model="sendDialogVisible" title="发送邮件" width="700px">
+      <el-form :model="emailForm" label-width="100px">
+        <el-form-item label="目标客户" required>
+          <el-select v-model="emailForm.targetType" @change="handleTargetTypeChange" placeholder="选择发送方式">
+            <el-option label="单个客户" value="single" />
+            <el-option label="客户等级筛选" value="grade" />
+            <el-option label="全部客户" value="all" />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item v-if="emailForm.targetType === 'single'" label="选择客户" required>
+          <el-select v-model="emailForm.companyId" filterable placeholder="搜索客户" style="width: 100%" @change="handleCompanySelect">
+            <el-option v-for="c in companies" :key="c.id" :label="c.companyName + (c.email ? ` (${c.email})` : '')" :value="c.id" />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item v-if="selectedCompany" label="客户信息">
+          <el-card size="small">
+            <div><strong>公司名称：</strong>{{ selectedCompany.companyName }}</div>
+            <div><strong>邮箱：</strong>{{ selectedCompany.email || '-' }}</div>
+            <div><strong>电话：</strong>{{ selectedCompany.phone || '-' }}</div>
+            <div><strong>客户等级：</strong>{{ selectedCompany.leadGrade || '-' }}</div>
+          </el-card>
+        </el-form-item>
+        
+        <el-form-item v-if="emailForm.targetType === 'grade'" label="客户等级">
+          <el-select v-model="emailForm.gradeFilter" placeholder="选择等级">
+            <el-option label="S级" value="S" />
+            <el-option label="A级" value="A" />
+            <el-option label="B级" value="B" />
+            <el-option label="S/A级" value="SA" />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item label="邮件模板" required>
+          <el-select v-model="emailForm.templateId" @change="handleTemplateChange" placeholder="选择模板" style="width: 100%">
+            <el-option v-for="t in templates" :key="t.id" :label="t.templateName" :value="t.id" />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item label="预览">
+          <div class="email-preview" v-html="emailPreview"></div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="sendDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleSend" :loading="sending">发送</el-button>
+        <el-button type="warning" @click="handleBatchSend" :loading="sending" v-if="emailForm.targetType !== 'single'">批量发送</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 收件人详情弹窗 -->
+    <el-dialog v-model="recipientDialogVisible" title="收件人详情" width="500px">
+      <div v-if="selectedRecipient" class="email-detail">
+        <el-descriptions :column="1" border>
+          <el-descriptions-item label="收件人姓名">{{ selectedRecipient.recipientName || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="收件人邮箱">
+            <a v-if="selectedRecipient.recipientEmail" :href="`mailto:${selectedRecipient.recipientEmail}`" class="el-link el-link--primary">{{ selectedRecipient.recipientEmail }}</a>
+            <span v-else>-</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="公司名称">{{ selectedRecipient.companyName || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="邮件主题">{{ selectedRecipient.subject || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="发送时间">{{ selectedRecipient.sentAt || '-' }}</el-descriptions-item>
+        </el-descriptions>
+      </div>
+      <template #footer>
+        <el-button @click="recipientDialogVisible = false">关闭</el-button>
+        <el-button v-if="selectedRecipient?.companyId" type="primary" @click="goToCompany(selectedRecipient.companyId)">查看客户详情</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 邮件详情弹窗 -->
+    <el-dialog v-model="detailDialogVisible" title="邮件详情" width="800px">
+      <div v-if="selectedRecord" class="email-detail">
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="收件人邮箱">{{ selectedRecord.recipientEmail }}</el-descriptions-item>
+          <el-descriptions-item label="收件人姓名">{{ selectedRecord.recipientName || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="邮件主题" :span="2">{{ selectedRecord.subject }}</el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag :type="getRecordStatusType(selectedRecord.status)">{{ getRecordStatusLabel(selectedRecord.status) }}</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="模板ID">{{ selectedRecord.templateId }}</el-descriptions-item>
+          <el-descriptions-item label="发送时间">{{ selectedRecord.sentAt || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="打开时间">{{ selectedRecord.openedAt || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="回复时间" :span="2">{{ selectedRecord.repliedAt || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="邮件内容" :span="2">
+            <div class="email-content" v-html="selectedRecord.content || '-'"></div>
+          </el-descriptions-item>
+        </el-descriptions>
+      </div>
+      <template #footer>
+        <el-button @click="detailDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, reactive, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { sendEmail, sendBatchEmail, getAllEmailRecords } from '@/api/email'
 import { getCompanies } from '@/api/company'
 
 const route = useRoute()
+const router = useRouter()
 const sending = ref(false)
+const sendDialogVisible = ref(false)
+const detailDialogVisible = ref(false)
+const recipientDialogVisible = ref(false)
+const selectedRecipient = ref(null)
 
+// 查询表单
+const searchForm = reactive({
+  email: '',
+  username: '',
+  dateRange: null
+})
+
+// 分页
+const pagination = reactive({
+  page: 1,
+  size: 20,
+  total: 0
+})
+
+// 发送邮件表单
 const emailForm = reactive({
   targetType: 'single',
   companyId: null,
@@ -108,6 +211,8 @@ const emailForm = reactive({
 
 const emailPreview = ref('')
 const companies = ref([])
+const selectedCompany = ref(null)
+const selectedRecord = ref(null)
 const templates = ref([
   { id: 1, templateName: 'Day1-公司介绍', subject: 'Professional Auto Parts Manufacturer from China', category: 'Cold_Outreach', daySequence: 1 },
   { id: 2, templateName: 'Day3-热销产品', subject: 'Hot Selling Auto Parts for Thai Market', category: 'Product_Promo', daySequence: 3 },
@@ -129,29 +234,74 @@ onMounted(async () => {
 
 async function loadCompanies() {
   try {
-    const res = await getCompanies()
-    companies.value = res.data
+    const res = await getCompanies({ size: 1000 })
+    companies.value = res.data?.records || res.data || []
+    if (emailForm.companyId) {
+      handleCompanySelect(emailForm.companyId)
+    }
   } catch (e) {
-    console.error(e)
+    console.error('加载客户列表失败:', e)
+    ElMessage.error('加载客户列表失败')
   }
 }
 
 async function loadRecords() {
   try {
-    const res = await getAllEmailRecords()
-    sendRecords.value = res.data
+    const params = {
+      page: pagination.page,
+      size: pagination.size,
+      email: searchForm.email,
+      username: searchForm.username
+    }
+    
+    if (searchForm.dateRange && searchForm.dateRange.length === 2) {
+      const startDate = formatDate(searchForm.dateRange[0])
+      const endDate = formatDate(searchForm.dateRange[1])
+      params.startDate = startDate
+      params.endDate = endDate
+    }
+    
+    const res = await getAllEmailRecords(params)
+    sendRecords.value = res.data?.records || []
+    pagination.total = res.data?.total || 0
   } catch (e) {
     console.error(e)
   }
 }
 
-function refreshRecords() {
+function formatDate(date) {
+  const d = new Date(date)
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function handleSearch() {
+  pagination.page = 1
   loadRecords()
+}
+
+function handleReset() {
+  searchForm.email = ''
+  searchForm.username = ''
+  searchForm.dateRange = null
+  pagination.page = 1
+  loadRecords()
+}
+
+function openSendDialog() {
+  sendDialogVisible.value = true
 }
 
 function handleTargetTypeChange() {
   emailForm.companyId = null
   emailForm.gradeFilter = ''
+  selectedCompany.value = null
+}
+
+function handleCompanySelect(companyId) {
+  selectedCompany.value = companies.value.find(c => c.id === companyId) || null
 }
 
 function handleTemplateChange() {
@@ -180,6 +330,7 @@ async function handleSend() {
       templateId: emailForm.templateId
     })
     ElMessage.success('邮件发送任务已创建')
+    sendDialogVisible.value = false
     await loadRecords()
   } catch (e) {
     ElMessage.error('发送失败')
@@ -215,6 +366,7 @@ async function handleBatchSend() {
       templateId: emailForm.templateId
     })
     ElMessage.success(`已创建批量发送任务，将发送给 ${companyIds.length} 个客户`)
+    sendDialogVisible.value = false
     await loadRecords()
   } catch (e) {
     ElMessage.error('批量发送失败')
@@ -222,6 +374,20 @@ async function handleBatchSend() {
   } finally {
     sending.value = false
   }
+}
+
+function viewDetail(row) {
+  selectedRecord.value = row
+  detailDialogVisible.value = true
+}
+
+function viewRecipient(row) {
+  selectedRecipient.value = row
+  recipientDialogVisible.value = true
+}
+
+function goToCompany(companyId) {
+  router.push(`/companies?companyId=${companyId}`)
 }
 
 function getRecordStatusType(status) {
@@ -247,11 +413,36 @@ function getRecordStatusLabel(status) {
   font-weight: bold;
 }
 
+.search-row {
+  margin-bottom: 20px;
+}
+
+.records-table {
+  margin-bottom: 20px;
+}
+
+.pagination {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .email-preview {
   border: 1px solid #e8f4f8;
   padding: 15px;
   border-radius: 8px;
   background: #f8fafc;
   min-height: 150px;
+}
+
+.email-detail {
+  padding: 10px;
+}
+
+.email-content {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 10px;
+  background: #f8fafc;
+  border-radius: 4px;
 }
 </style>

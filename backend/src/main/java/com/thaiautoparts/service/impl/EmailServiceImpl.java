@@ -2,14 +2,19 @@ package com.thaiautoparts.service.impl;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.thaiautoparts.dto.PageResult;
 import com.thaiautoparts.entity.Company;
 import com.thaiautoparts.entity.ContactPerson;
 import com.thaiautoparts.entity.EmailRecord;
 import com.thaiautoparts.entity.EmailTemplate;
+import com.thaiautoparts.entity.FollowUpRecord;
 import com.thaiautoparts.repository.CompanyMapper;
 import com.thaiautoparts.repository.ContactPersonMapper;
 import com.thaiautoparts.repository.EmailRecordMapper;
 import com.thaiautoparts.repository.EmailTemplateMapper;
+import com.thaiautoparts.repository.FollowUpRecordMapper;
 import com.thaiautoparts.service.EmailService;
 import jakarta.mail.*;
 import jakarta.mail.internet.MimeMessage;
@@ -20,7 +25,10 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +44,7 @@ public class EmailServiceImpl implements EmailService {
     private final EmailTemplateMapper emailTemplateMapper;
     private final CompanyMapper companyMapper;
     private final ContactPersonMapper contactPersonMapper;
+    private final FollowUpRecordMapper followUpRecordMapper;
 
     @Value("${spring.mail.host-smtp}")
     private String mailHostSmtp;
@@ -132,11 +141,34 @@ public class EmailServiceImpl implements EmailService {
             record.setMessageId(message.getMessageID());
             emailRecordMapper.updateById(record);
             
+            // 插入跟进记录
+            FollowUpRecord followUp = new FollowUpRecord();
+            followUp.setCompanyId(companyId);
+            followUp.setContactId(contactId);
+            followUp.setFollowUpType("Email");
+            followUp.setDirection("Outbound");
+            followUp.setSummary("发送邮件: " + template.getSubject());
+            followUp.setDetail(content);
+            followUp.setOutcome("Sent");
+            followUpRecordMapper.insert(followUp);
+            
             log.info("Email sent to {} for company {}", recipientEmail, companyId);
         } catch (Exception e) {
             record.setStatus("Failed");
             record.setErrorMessage(e.getMessage());
             emailRecordMapper.updateById(record);
+            
+            // 插入跟进记录
+            FollowUpRecord followUp = new FollowUpRecord();
+            followUp.setCompanyId(companyId);
+            followUp.setContactId(contactId);
+            followUp.setFollowUpType("Email");
+            followUp.setDirection("Outbound");
+            followUp.setSummary("发送邮件失败: " + template.getSubject());
+            followUp.setDetail(content);
+            followUp.setOutcome("Failed");
+            followUpRecordMapper.insert(followUp);
+            
             log.error("Failed to send email to {}: {}", recipientEmail, e.getMessage());
         } finally {
             if (transport != null) {
@@ -177,6 +209,52 @@ public class EmailServiceImpl implements EmailService {
         LambdaQueryWrapper<EmailRecord> wrapper = new LambdaQueryWrapper<>();
         wrapper.orderByDesc(EmailRecord::getCreatedAt);
         return emailRecordMapper.selectList(wrapper);
+    }
+
+    @Override
+    public PageResult<EmailRecord> getAllEmailRecords(int page, int size, String email, String username, String startDate, String endDate) {
+        LambdaQueryWrapper<EmailRecord> wrapper = new LambdaQueryWrapper<>();
+        
+        if (StrUtil.isNotBlank(email)) {
+            wrapper.like(EmailRecord::getRecipientEmail, email);
+        }
+        
+        if (StrUtil.isNotBlank(username)) {
+            wrapper.like(EmailRecord::getSubject, username);
+        }
+        
+        if (StrUtil.isNotBlank(startDate)) {
+            LocalDateTime startDateTime = LocalDate.parse(startDate, DateTimeFormatter.ofPattern("yyyy-MM-dd")).atStartOfDay();
+            wrapper.ge(EmailRecord::getCreatedAt, startDateTime);
+        }
+        
+        if (StrUtil.isNotBlank(endDate)) {
+            LocalDateTime endDateTime = LocalDate.parse(endDate, DateTimeFormatter.ofPattern("yyyy-MM-dd")).atTime(23, 59, 59);
+            wrapper.le(EmailRecord::getCreatedAt, endDateTime);
+        }
+        
+        wrapper.orderByDesc(EmailRecord::getCreatedAt);
+        
+        IPage<EmailRecord> pageResult = new Page<>(page, size);
+        IPage<EmailRecord> result = emailRecordMapper.selectPage(pageResult, wrapper);
+        
+        List<EmailRecord> records = result.getRecords();
+        for (EmailRecord record : records) {
+            if (record.getCompanyId() != null) {
+                Company company = companyMapper.selectById(record.getCompanyId());
+                if (company != null) {
+                    record.setCompanyName(company.getCompanyName());
+                }
+            }
+            if (record.getContactId() != null) {
+                ContactPerson contact = contactPersonMapper.selectById(record.getContactId());
+                if (contact != null) {
+                    record.setRecipientName(contact.getFullName());
+                }
+            }
+        }
+        
+        return new PageResult<>(result.getTotal(), (int) result.getCurrent(), (int) result.getSize(), records);
     }
 
     @Override

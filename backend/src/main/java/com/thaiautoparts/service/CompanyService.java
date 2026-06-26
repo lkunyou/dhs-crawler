@@ -16,4 +16,5 @@ public interface CompanyService {
     List<Map<String, Object>> getLeadGradeStats();
     List<Map<String, Object>> getStatusStats();
     List<Map<String, Object>> getSourceStats();
+    List<CompanyDTO> listAllCompanies();
 }

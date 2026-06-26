@@ -24,7 +24,17 @@
             </div>
             <div class="email-content">
               <div class="email-header">
-                <span class="email-from">{{ email.fromName || email.fromEmail }}</span>
+                <div class="email-from-wrapper">
+                  <span class="email-from">{{ email.fromName || email.fromEmail }}</span>
+                  <el-tag 
+                    :type="getPriorityType(email.priority)" 
+                    size="small" 
+                    class="priority-tag"
+                    effect="plain"
+                  >
+                    {{ getPriorityLabel(email.priority) }}
+                  </el-tag>
+                </div>
                 <span class="email-time">{{ formatTime(email.createdAt) }}</span>
               </div>
               <div class="email-subject">{{ email.subject }}</div>
@@ -45,6 +55,28 @@
               <div class="detail-header">
                 <h3>{{ selectedEmail.subject }}</h3>
                 <div class="detail-actions">
+                  <el-dropdown @command="handlePriorityChange" trigger="click">
+                    <el-button size="small">
+                      <el-icon><Flag /></el-icon>
+                      标记级别
+                    </el-button>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item command="urgent">
+                          <el-tag type="danger" size="small">紧急</el-tag>
+                        </el-dropdown-item>
+                        <el-dropdown-item command="high">
+                          <el-tag type="warning" size="small">高</el-tag>
+                        </el-dropdown-item>
+                        <el-dropdown-item command="normal">
+                          <el-tag type="info" size="small">普通</el-tag>
+                        </el-dropdown-item>
+                        <el-dropdown-item command="low">
+                          <el-tag type="success" size="small">低</el-tag>
+                        </el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
                   <el-button @click="toggleStar(selectedEmail)" size="small">
                     <el-icon :size="16" :color="selectedEmail.isStarred ? '#f59e0b' : '#94a3b8'"><Star /></el-icon>
                   </el-button>
@@ -59,6 +91,9 @@
               <div class="info-row">
                 <span class="label">发件人:</span>
                 <span class="value">{{ selectedEmail.fromName || selectedEmail.fromEmail }}</span>
+                <el-tag :type="getPriorityType(selectedEmail.priority)" size="small" style="margin-left: 10px">
+                  {{ getPriorityLabel(selectedEmail.priority) }}
+                </el-tag>
               </div>
               <div class="info-row">
                 <span class="label">收件人:</span>
@@ -80,18 +115,82 @@
         </div>
       </div>
     </el-card>
+
+    <!-- 邮件详情弹窗 -->
+    <el-dialog
+      v-model="emailDialogVisible"
+      :title="dialogEmail?.subject"
+      width="800px"
+      destroy-on-close
+    >
+      <div v-if="dialogEmail" class="dialog-email-content">
+        <div class="dialog-email-info">
+          <div class="info-row">
+            <span class="label">发件人:</span>
+            <span class="value">{{ dialogEmail.fromName || dialogEmail.fromEmail }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">收件人:</span>
+            <span class="value">{{ dialogEmail.toEmail }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">时间:</span>
+            <span class="value">{{ formatFullTime(dialogEmail.createdAt) }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">级别:</span>
+            <el-tag :type="getPriorityType(dialogEmail.priority)" size="small">
+              {{ getPriorityLabel(dialogEmail.priority) }}
+            </el-tag>
+          </div>
+        </div>
+        <el-divider />
+        <div class="dialog-email-body" v-html="dialogEmail.content"></div>
+      </div>
+      <template #footer>
+        <el-dropdown @command="handleDialogPriorityChange" trigger="click" style="margin-right: 10px">
+          <el-button>
+            <el-icon><Flag /></el-icon>
+            标记级别
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="urgent">
+                <el-tag type="danger" size="small">紧急</el-tag>
+              </el-dropdown-item>
+              <el-dropdown-item command="high">
+                <el-tag type="warning" size="small">高</el-tag>
+              </el-dropdown-item>
+              <el-dropdown-item command="normal">
+                <el-tag type="info" size="small">普通</el-tag>
+              </el-dropdown-item>
+              <el-dropdown-item command="low">
+                <el-tag type="success" size="small">低</el-tag>
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+        <el-button @click="toggleStar(dialogEmail)">
+          <el-icon :color="dialogEmail?.isStarred ? '#f59e0b' : '#94a3b8'"><Star /></el-icon>
+          {{ dialogEmail?.isStarred ? '取消标星' : '标星' }}
+        </el-button>
+        <el-button type="primary" @click="emailDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Star, Delete, Message, MessageBox } from '@element-plus/icons-vue'
-import { getInbox, getEmailById, markAsStarred, deleteEmail, fetchEmails } from '@/api/email'
+import { Star, Delete, Message, MessageBox, Flag } from '@element-plus/icons-vue'
+import { getInbox, markAsRead, markAsStarred, setPriority, deleteEmail, fetchEmails } from '@/api/email'
 
 const emails = ref([])
 const selectedEmail = ref(null)
 const loading = ref(false)
+const emailDialogVisible = ref(false)
+const dialogEmail = ref(null)
 
 onMounted(() => {
   loadInbox()
@@ -136,14 +235,12 @@ async function selectEmail(email) {
   }
 }
 
-async function markAsRead(id) {
-  try {
-    const email = emails.value.find(e => e.id === id)
-    if (email) {
-      email.isRead = true
-    }
-  } catch (e) {
-    console.error(e)
+function openEmailDialog(email) {
+  dialogEmail.value = email
+  emailDialogVisible.value = true
+  if (!email.isRead) {
+    markAsRead(email.id)
+    email.isRead = true
   }
 }
 
@@ -159,6 +256,33 @@ async function toggleStar(email) {
   }
 }
 
+async function handlePriorityChange(command) {
+  if (!selectedEmail.value) return
+  try {
+    await setPriority(selectedEmail.value.id, command)
+    selectedEmail.value.priority = command
+    ElMessage.success('级别已更新')
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('更新失败')
+  }
+}
+
+async function handleDialogPriorityChange(command) {
+  if (!dialogEmail.value) return
+  try {
+    await setPriority(dialogEmail.value.id, command)
+    dialogEmail.value.priority = command
+    // 同步更新列表中的邮件
+    const email = emails.value.find(e => e.id === dialogEmail.value.id)
+    if (email) email.priority = command
+    ElMessage.success('级别已更新')
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('更新失败')
+  }
+}
+
 async function handleDeleteEmail(id) {
   try {
     await deleteEmail(id)
@@ -166,10 +290,34 @@ async function handleDeleteEmail(id) {
     if (selectedEmail.value?.id === id) {
       selectedEmail.value = null
     }
+    if (dialogEmail.value?.id === id) {
+      dialogEmail.value = null
+      emailDialogVisible.value = false
+    }
     ElMessage.success('已删除')
   } catch (e) {
     console.error(e)
     ElMessage.error('删除失败')
+  }
+}
+
+function getPriorityType(priority) {
+  switch (priority) {
+    case 'urgent': return 'danger'
+    case 'high': return 'warning'
+    case 'normal': return 'info'
+    case 'low': return 'success'
+    default: return 'info'
+  }
+}
+
+function getPriorityLabel(priority) {
+  switch (priority) {
+    case 'urgent': return '紧急'
+    case 'high': return '高'
+    case 'normal': return '普通'
+    case 'low': return '低'
+    default: return '普通'
   }
 }
 
@@ -278,10 +426,22 @@ function truncateContent(content) {
   margin-bottom: 4px;
 }
 
+.email-from-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
 .email-from {
   font-weight: 500;
   color: #1e293b;
   font-size: 13px;
+}
+
+.priority-tag {
+  flex-shrink: 0;
 }
 
 .email-time {
@@ -353,6 +513,7 @@ function truncateContent(content) {
 
 .info-row {
   display: flex;
+  align-items: center;
   margin-bottom: 8px;
 }
 
@@ -392,5 +553,29 @@ function truncateContent(content) {
 
 .empty-state p {
   margin: 16px 0 24px;
+}
+
+.dialog-email-content {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.dialog-email-info {
+  padding: 10px 0;
+}
+
+.dialog-email-info .info-row {
+  margin-bottom: 12px;
+}
+
+.dialog-email-info .label {
+  width: 80px;
+}
+
+.dialog-email-body {
+  padding: 20px 0;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #334155;
 }
 </style>

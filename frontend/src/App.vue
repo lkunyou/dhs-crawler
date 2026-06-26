@@ -155,6 +155,34 @@ body {
   font-size: 11px;
 }
 
+@media (max-width: 768px) {
+  .el-card {
+    overflow-x: auto;
+  }
+  .el-table {
+    min-width: max-content;
+  }
+  .el-card__body {
+    padding: 12px;
+  }
+  .el-card__header {
+    padding: 12px 16px;
+  }
+  .el-dialog {
+    width: 90vw !important;
+    max-width: 90vw;
+  }
+  .el-dialog__body {
+    padding: 16px;
+  }
+  .el-form-item {
+    margin-bottom: 14px;
+  }
+  .el-form-item__label {
+    padding-bottom: 4px;
+  }
+}
+
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.2s ease;

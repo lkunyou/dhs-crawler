@@ -3,8 +3,10 @@ package com.thaiautoparts.service.impl;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.thaiautoparts.entity.Company;
+import com.thaiautoparts.entity.FollowUpRecord;
 import com.thaiautoparts.entity.WhatsappRecord;
 import com.thaiautoparts.repository.CompanyMapper;
+import com.thaiautoparts.repository.FollowUpRecordMapper;
 import com.thaiautoparts.repository.WhatsappRecordMapper;
 import com.thaiautoparts.service.WhatsappService;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,7 @@ public class WhatsappServiceImpl implements WhatsappService {
 
     private final WhatsappRecordMapper whatsappRecordMapper;
     private final CompanyMapper companyMapper;
+    private final FollowUpRecordMapper followUpRecordMapper;
     
     @Value("${app.whatsapp.api-url:https://api.whatsapp.com}")
     private String whatsappApiUrl;
@@ -62,6 +65,17 @@ public class WhatsappServiceImpl implements WhatsappService {
             record.setMessageId(messageId);
             whatsappRecordMapper.updateById(record);
             
+            // 插入跟进记录
+            FollowUpRecord followUp = new FollowUpRecord();
+            followUp.setCompanyId(companyId);
+            followUp.setContactId(contactId);
+            followUp.setFollowUpType("WhatsApp");
+            followUp.setDirection("Outbound");
+            followUp.setSummary("发送WhatsApp消息");
+            followUp.setDetail(content);
+            followUp.setOutcome("Sent");
+            followUpRecordMapper.insert(followUp);
+            
             // 更新公司状态
             if ("New".equals(company.getStatus())) {
                 company.setStatus("Contacted");
@@ -74,6 +88,18 @@ public class WhatsappServiceImpl implements WhatsappService {
             record.setStatus("Failed");
             record.setErrorMessage(e.getMessage());
             whatsappRecordMapper.updateById(record);
+            
+            // 插入跟进记录
+            FollowUpRecord followUp = new FollowUpRecord();
+            followUp.setCompanyId(companyId);
+            followUp.setContactId(contactId);
+            followUp.setFollowUpType("WhatsApp");
+            followUp.setDirection("Outbound");
+            followUp.setSummary("发送WhatsApp消息失败");
+            followUp.setDetail(content);
+            followUp.setOutcome("Failed");
+            followUpRecordMapper.insert(followUp);
+            
             log.error("Failed to send WhatsApp to {}: {}", phoneNumber, e.getMessage());
         }
     }

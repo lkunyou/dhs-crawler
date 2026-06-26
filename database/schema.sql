@@ -343,6 +343,39 @@ CREATE TABLE `p_quotation` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='报价单表';
 
 -- ============================================
+-- 9.1 产品表
+-- ============================================
+CREATE TABLE `p_product` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
+    `product_name` VARCHAR(200) NOT NULL COMMENT '产品名称',
+    `product_code` VARCHAR(50) COMMENT '产品编码',
+    `category` VARCHAR(50) COMMENT '产品类别',
+    `brand` VARCHAR(100) COMMENT '品牌',
+    `specification` VARCHAR(500) COMMENT '规格',
+    `unit_price` DECIMAL(10,2) COMMENT '单价(USD)',
+    `stock` INT DEFAULT 0 COMMENT '库存',
+    `description` TEXT COMMENT '产品描述',
+    `status` VARCHAR(20) DEFAULT 'active' COMMENT '状态:active-在售,inactive-下架',
+    
+    `model` VARCHAR(100) COMMENT '型号',
+    `dimensions` VARCHAR(100) COMMENT '产品尺寸',
+    `pkg_length` INT COMMENT '包装长(mm)',
+    `pkg_width` INT COMMENT '包装宽(mm)',
+    `pkg_height` INT COMMENT '包装高(mm)',
+    `qty_per_pkg` INT COMMENT '每箱数量',
+    `car_model` VARCHAR(200) COMMENT '适用车型',
+    `production_date` DATE COMMENT '量产日期',
+    `weight` DECIMAL(10,2) COMMENT '重量(g)',
+    
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    
+    INDEX `idx_product_name` (`product_name`),
+    INDEX `idx_category` (`category`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='产品表';
+
+-- ============================================
 -- 10. 爬虫任务表
 -- ============================================
 CREATE TABLE `p_crawler_task` (
@@ -590,6 +623,7 @@ CREATE TABLE IF NOT EXISTS `p_inbound_email` (
     `in_reply_to` VARCHAR(200) COMMENT '回复的原始邮件Message-ID',
     `is_read` BOOLEAN DEFAULT FALSE COMMENT '是否已读',
     `is_starred` BOOLEAN DEFAULT FALSE COMMENT '是否标星',
+    `priority` VARCHAR(20) DEFAULT 'normal' COMMENT '邮件级别: low-低 normal-普通 high-高 urgent-紧急',
     `attachments` TEXT COMMENT '附件列表(JSON)',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '接收时间',
     

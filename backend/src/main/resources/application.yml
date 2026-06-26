@@ -107,6 +107,12 @@ app:
     python:
       path: ${PYTHON_PATH:python}
   
+  # 搜索API配置
+  search:
+    serpapi-key: ${SERP_API_KEY:}
+    brave-api-key: ${BRAVE_API_KEY:}
+    bing-api-key: ${BING_API_KEY:}
+  
   # 限流配置
   rate-limit:
     email-daily: 100

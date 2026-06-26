@@ -86,11 +86,34 @@
     </el-card>
 
     <!-- 发送对话框 -->
-    <el-dialog v-model="showSendDialog" title="发送WhatsApp消息" width="500px">
-      <el-form :model="sendForm" label-width="80px">
+    <el-dialog v-model="showSendDialog" title="发送WhatsApp消息" width="560px">
+      <el-form :model="sendForm" label-width="90px">
         <el-form-item label="目标客户">
-          <el-select v-model="sendForm.companyId" filterable placeholder="搜索客户">
-            <el-option label="全部S/A级客户" value="all_high_grade" />
+          <el-select
+            v-model="sendForm.companyId"
+            filterable
+            remote
+            reserve-keyword
+            placeholder="输入客户名称搜索"
+            :remote-method="searchCompanies"
+            :loading="companyLoading"
+            clearable
+            style="width: 100%"
+          >
+            <el-option
+              v-for="item in companyOptions"
+              :key="item.id"
+              :label="item.companyName"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="选择模板">
+          <el-select v-model="sendForm.templateId" placeholder="选择话术模板" clearable style="width: 100%" @change="handleTemplateChange">
+            <el-option label="公司介绍" :value="1" />
+            <el-option label="产品图片" :value="2" />
+            <el-option label="问需求" :value="3" />
+            <el-option label="报价引导" :value="4" />
           </el-select>
         </el-form-item>
         <el-form-item label="消息内容">
@@ -111,16 +134,20 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { getCompanies } from '@/api/company'
 
 const showSendDialog = ref(false)
 const activeTemplate = ref('1')
+const companyOptions = ref([])
+const companyLoading = ref(false)
 
 const sendForm = reactive({
   companyId: null,
   content: '',
-  imageUrl: ''
+  imageUrl: '',
+  templateId: null
 })
 
 const messageRecords = ref([
@@ -136,8 +163,31 @@ const templates = {
   4: `We have a special promotion this month:\n\n• 10% discount on first order\n• Free samples (freight collect)\n• MOQ from 50 pcs\n\nWould you like me to prepare a quotation for you?`
 }
 
+async function searchCompanies(query) {
+  if (!query || query.length < 1) {
+    companyOptions.value = []
+    return
+  }
+  companyLoading.value = true
+  try {
+    const res = await getCompanies({ companyName: query, page: 1, size: 20 })
+    companyOptions.value = res.data?.records || res.data?.list || res.data || []
+  } catch (e) {
+    companyOptions.value = []
+  } finally {
+    companyLoading.value = false
+  }
+}
+
+function handleTemplateChange(val) {
+  if (val && templates[val]) {
+    sendForm.content = templates[val]
+  }
+}
+
 function useTemplate(id) {
   sendForm.content = templates[id]
+  sendForm.templateId = id
   ElMessage.success('已加载话术模板')
 }
 

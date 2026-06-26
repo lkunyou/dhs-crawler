@@ -250,6 +250,16 @@ public class EmailReceiverServiceImpl implements EmailReceiverService {
 
     @Override
     @Transactional
+    public void setPriority(Long id, String priority) {
+        InboundEmail email = inboundEmailMapper.selectById(id);
+        if (email != null) {
+            email.setPriority(priority);
+            inboundEmailMapper.updateById(email);
+        }
+    }
+
+    @Override
+    @Transactional
     public void deleteEmail(Long id) {
         inboundEmailMapper.deleteById(id);
     }

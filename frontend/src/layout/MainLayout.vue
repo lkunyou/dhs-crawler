@@ -2,20 +2,44 @@
   <el-container class="layout-container">
     <el-header class="main-header">
       <div class="header-left">
+        <el-button class="mobile-menu-btn" text @click="mobileMenuVisible = true">
+          <el-icon :size="20"><Menu /></el-icon>
+        </el-button>
         <div class="logo">
           <el-icon :size="20"><DataBoard /></el-icon>
           <span>泰国汽配CRM</span>
         </div>
         <nav class="top-nav">
-          <router-link 
-            v-for="item in menuItems" 
-            :key="item.path" 
-            :to="item.path"
-            :class="['nav-item', { active: activeMenu === item.path }]"
-          >
-            <el-icon :size="16"><component :is="item.icon" /></el-icon>
-            <span>{{ item.label }}</span>
-          </router-link>
+          <template v-for="item in menuItems" :key="item.path">
+            <router-link 
+              v-if="!item.children"
+              :to="item.path"
+              :class="['nav-item', { active: activeMenu === item.path }]"
+            >
+              <el-icon :size="16"><component :is="item.icon" /></el-icon>
+              <span>{{ item.label }}</span>
+            </router-link>
+            <el-dropdown v-else @command="handleMenuCommand">
+              <span :class="['nav-item', { active: isActiveParent(item) }]">
+                <el-icon :size="16"><component :is="item.icon" /></el-icon>
+                <span>{{ item.label }}</span>
+                <el-icon :size="12"><ArrowDown /></el-icon>
+              </span>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item 
+                    v-for="child in item.children" 
+                    :key="child.path" 
+                    :command="child.path"
+                    :class="{ active: activeMenu === child.path }"
+                  >
+                    <el-icon :size="14"><component :is="child.icon" /></el-icon>
+                    <span>{{ child.label }}</span>
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </template>
         </nav>
       </div>
       <div class="header-right">
@@ -40,11 +64,48 @@
     <el-main>
       <router-view />
     </el-main>
+
+    <el-drawer v-model="mobileMenuVisible" title="菜单" direction="ltr" size="260px" :with-header="false">
+      <div class="mobile-drawer-header">
+        <div class="logo">
+          <el-icon :size="20"><DataBoard /></el-icon>
+          <span>泰国汽配CRM</span>
+        </div>
+      </div>
+      <div class="mobile-menu">
+        <template v-for="item in menuItems" :key="item.path">
+          <div v-if="!item.children" 
+               :class="['mobile-menu-item', { active: activeMenu === item.path }]"
+               @click="handleMobileMenuClick(item.path)">
+            <el-icon :size="18"><component :is="item.icon" /></el-icon>
+            <span>{{ item.label }}</span>
+          </div>
+          <div v-else class="mobile-menu-group">
+            <div class="mobile-menu-group-title" @click="toggleGroup(item.path)">
+              <div class="mobile-menu-group-left">
+                <el-icon :size="18"><component :is="item.icon" /></el-icon>
+                <span>{{ item.label }}</span>
+              </div>
+              <el-icon :size="14" :class="['mobile-menu-arrow', { expanded: isGroupExpanded(item.path) }]"><ArrowDown /></el-icon>
+            </div>
+            <div v-show="isGroupExpanded(item.path)" class="mobile-menu-children">
+              <div v-for="child in item.children" 
+                   :key="child.path"
+                   :class="['mobile-menu-item mobile-menu-subitem', { active: activeMenu === child.path }]"
+                   @click="handleMobileMenuClick(child.path)">
+                <el-icon :size="16"><component :is="child.icon" /></el-icon>
+                <span>{{ child.label }}</span>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </el-drawer>
   </el-container>
 </template>
 
 <script setup>
-import { computed, markRaw } from 'vue'
+import { computed, markRaw, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/store/user'
@@ -58,24 +119,80 @@ import {
   Search, 
   TrendCharts,
   Bell,
-  User
+  User,
+  ArrowDown,
+  Setting,
+  Menu
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const mobileMenuVisible = ref(false)
+const expandedGroups = ref(new Set())
 
 const activeMenu = computed(() => route.path)
 
+function handleMobileMenuClick(path) {
+  mobileMenuVisible.value = false
+  router.push(path)
+}
+
+function toggleGroup(path) {
+  if (expandedGroups.value.has(path)) {
+    expandedGroups.value.delete(path)
+  } else {
+    expandedGroups.value.add(path)
+  }
+}
+
+function isGroupExpanded(path) {
+  return expandedGroups.value.has(path)
+}
+
 const menuItems = [
   { path: '/dashboard', label: '数据看板', icon: markRaw(DataBoard) },
-  { path: '/companies', label: '客户管理', icon: markRaw(UserFilled) },
-  { path: '/inbox', label: '收件箱', icon: markRaw(MessageBox) },
-  { path: '/email-campaign', label: '邮件营销', icon: markRaw(Message) },
-  { path: '/email-templates', label: '邮件模板', icon: markRaw(Document) },
-  { path: '/whatsapp', label: 'WhatsApp', icon: markRaw(ChatDotRound) },
-  { path: '/crawler', label: '爬虫管理', icon: markRaw(Search) },
-  { path: '/analytics', label: '数据分析', icon: markRaw(TrendCharts) }
+  { 
+    path: '/companies', 
+    label: '客户管理', 
+    icon: markRaw(UserFilled),
+    children: [
+      { path: '/companies', label: '客户列表', icon: markRaw(UserFilled) },
+      { path: '/quotes', label: '报价管理', icon: markRaw(Document) },
+      { path: '/products', label: '产品管理', icon: markRaw(Search) }
+    ]
+  },
+  { 
+    path: '/customer-search', 
+    label: '客户搜索', 
+    icon: markRaw(Search),
+    children: [
+      { path: '/customer-search', label: '搜索客户', icon: markRaw(Search) },
+      { path: '/crawler', label: '爬虫管理', icon: markRaw(Search) }
+    ]
+  },
+  { 
+    path: '/email', 
+    label: '邮件管理', 
+    icon: markRaw(Message),
+    children: [
+      { path: '/inbox', label: '收件箱', icon: markRaw(MessageBox) },
+      { path: '/email-campaign', label: '发送邮件', icon: markRaw(Document) },
+      { path: '/email-marketing', label: '邮件营销', icon: markRaw(Message) },
+      { path: '/email-templates', label: '邮件模板', icon: markRaw(Document) },
+      { path: '/whatsapp', label: 'WhatsApp', icon: markRaw(ChatDotRound) }
+    ]
+  },
+  { path: '/analytics', label: '数据分析', icon: markRaw(TrendCharts) },
+  { 
+    path: '/system-config', 
+    label: '系统配置', 
+    icon: markRaw(Setting),
+    children: [
+      { path: '/user-management', label: '用户管理', icon: markRaw(User) },
+      { path: '/system-config', label: '配置参数', icon: markRaw(Setting) }
+    ]
+  }
 ]
 
 function handleCommand(command) {
@@ -84,6 +201,14 @@ function handleCommand(command) {
     ElMessage.success('已退出登录')
     router.push('/login')
   }
+}
+
+function handleMenuCommand(command) {
+  router.push(command)
+}
+
+function isActiveParent(item) {
+  return item.children?.some(child => activeMenu.value === child.path)
 }
 </script>
 
@@ -193,5 +318,110 @@ function handleCommand(command) {
 .el-main {
   padding: 0;
   background-color: #f8fafc;
+}
+
+.mobile-menu-btn {
+  display: none;
+  color: #64748b;
+  padding: 6px;
+}
+
+.mobile-drawer-header {
+  padding: 16px;
+  border-bottom: 1px solid #e8f4f8;
+  margin-bottom: 8px;
+}
+
+.mobile-menu {
+  padding: 0 12px;
+}
+
+.mobile-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  color: #64748b;
+  font-size: 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mobile-menu-item:hover {
+  color: #2563eb;
+  background-color: #eff6ff;
+}
+
+.mobile-menu-item.active {
+  color: #2563eb;
+  background-color: #eff6ff;
+  font-weight: 500;
+}
+
+.mobile-menu-group {
+  margin-bottom: 8px;
+}
+
+.mobile-menu-group-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+}
+
+.mobile-menu-group-title:hover {
+  background-color: #f8fafc;
+}
+
+.mobile-menu-group-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mobile-menu-arrow {
+  transition: transform 0.2s ease;
+  color: #94a3b8;
+}
+
+.mobile-menu-arrow.expanded {
+  transform: rotate(180deg);
+}
+
+.mobile-menu-children {
+  overflow: hidden;
+}
+
+.mobile-menu-subitem {
+  padding-left: 36px;
+  font-size: 13px;
+}
+
+@media (max-width: 768px) {
+  .mobile-menu-btn {
+    display: inline-flex;
+  }
+  .top-nav {
+    display: none;
+  }
+  .main-header {
+    padding: 0 12px;
+  }
+  .header-left {
+    gap: 12px;
+  }
+  .logo span {
+    font-size: 13px;
+  }
+  .user-info span {
+    display: none;
+  }
 }
 </style>

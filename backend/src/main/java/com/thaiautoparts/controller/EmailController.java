@@ -1,5 +1,6 @@
 package com.thaiautoparts.controller;
 
+import com.thaiautoparts.dto.PageResult;
 import com.thaiautoparts.dto.Result;
 import com.thaiautoparts.entity.EmailRecord;
 import com.thaiautoparts.entity.InboundEmail;
@@ -38,8 +39,14 @@ public class EmailController {
     }
 
     @GetMapping("/records")
-    public Result<List<EmailRecord>> getAllRecords() {
-        return Result.success(emailService.getAllEmailRecords());
+    public Result<PageResult<EmailRecord>> getAllRecords(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String email,
+            @RequestParam(required = false) String username,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        return Result.success(emailService.getAllEmailRecords(page, size, email, username, startDate, endDate));
     }
 
     @GetMapping("/stats")
@@ -87,6 +94,12 @@ public class EmailController {
     @PostMapping("/inbox/{id}/star")
     public Result<Void> markAsStarred(@PathVariable Long id, @RequestParam boolean starred) {
         emailReceiverService.markAsStarred(id, starred);
+        return Result.success();
+    }
+
+    @PostMapping("/inbox/{id}/priority")
+    public Result<Void> setPriority(@PathVariable Long id, @RequestParam String priority) {
+        emailReceiverService.setPriority(id, priority);
         return Result.success();
     }
 

@@ -11,6 +11,9 @@ import com.thaiautoparts.entity.Company;
 import com.thaiautoparts.entity.ContactPerson;
 import com.thaiautoparts.repository.CompanyMapper;
 import com.thaiautoparts.repository.ContactPersonMapper;
+import com.thaiautoparts.repository.EmailRecordMapper;
+import com.thaiautoparts.repository.WhatsappRecordMapper;
+import com.thaiautoparts.repository.QuotationMapper;
 import com.thaiautoparts.service.CompanyService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +31,9 @@ public class CompanyServiceImpl implements CompanyService {
 
     private final CompanyMapper companyMapper;
     private final ContactPersonMapper contactPersonMapper;
+    private final EmailRecordMapper emailRecordMapper;
+    private final WhatsappRecordMapper whatsappRecordMapper;
+    private final QuotationMapper quotationMapper;
 
     @Override
     public PageResult<CompanyDTO> listCompanies(int page, int size, String keyword, String leadGrade, String status) {
@@ -53,6 +59,23 @@ public class CompanyServiceImpl implements CompanyService {
         List<CompanyDTO> dtoList = result.getRecords().stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
+
+        List<Long> companyIds = dtoList.stream().map(CompanyDTO::getId).collect(Collectors.toList());
+        if (!companyIds.isEmpty()) {
+            Map<Long, Integer> emailCountMap = emailRecordMapper.countByCompanyIds(companyIds).stream()
+                    .collect(Collectors.toMap(m -> (Long) m.get("companyId"), m -> ((Number) m.get("cnt")).intValue()));
+            Map<Long, Integer> whatsappCountMap = whatsappRecordMapper.countByCompanyIds(companyIds).stream()
+                    .collect(Collectors.toMap(m -> (Long) m.get("companyId"), m -> ((Number) m.get("cnt")).intValue()));
+            Map<Long, Integer> quoteCountMap = quotationMapper.countByCompanyIds(companyIds).stream()
+                    .collect(Collectors.toMap(m -> (Long) m.get("companyId"), m -> ((Number) m.get("cnt")).intValue()));
+
+            for (CompanyDTO dto : dtoList) {
+                Long companyId = dto.getId();
+                dto.setEmailCount(emailCountMap.getOrDefault(companyId, 0));
+                dto.setWhatsappCount(whatsappCountMap.getOrDefault(companyId, 0));
+                dto.setQuoteCount(quoteCountMap.getOrDefault(companyId, 0));
+            }
+        }
 
         return new PageResult<>(result.getTotal(), page, size, dtoList);
     }
@@ -148,6 +171,12 @@ public class CompanyServiceImpl implements CompanyService {
     @Override
     public List<Map<String, Object>> getSourceStats() {
         return companyMapper.countBySource();
+    }
+
+    @Override
+    public List<CompanyDTO> listAllCompanies() {
+        List<Company> list = companyMapper.selectList(new LambdaQueryWrapper<Company>().orderByDesc(Company::getCreatedAt));
+        return list.stream().map(this::convertToDTO).collect(Collectors.toList());
     }
 
     private CompanyDTO convertToDTO(Company company) {

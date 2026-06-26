@@ -36,6 +36,24 @@ const routes = [
         meta: { title: '客户详情' }
       },
       {
+        path: 'quotes',
+        name: 'Quotes',
+        component: () => import('@/views/QuoteManagement.vue'),
+        meta: { title: '报价管理' }
+      },
+      {
+        path: 'products',
+        name: 'Products',
+        component: () => import('@/views/ProductManagement.vue'),
+        meta: { title: '产品管理' }
+      },
+      {
+        path: 'customer-search',
+        name: 'CustomerSearch',
+        component: () => import('@/views/CustomerSearch.vue'),
+        meta: { title: '客户搜索' }
+      },
+      {
         path: 'inbox',
         name: 'Inbox',
         component: () => import('@/views/Inbox.vue'),
@@ -45,6 +63,12 @@ const routes = [
         path: 'email-campaign',
         name: 'EmailCampaign',
         component: () => import('@/views/EmailCampaign.vue'),
+        meta: { title: '发送邮件' }
+      },
+      {
+        path: 'email-marketing',
+        name: 'EmailMarketing',
+        component: () => import('@/views/EmailMarketing.vue'),
         meta: { title: '邮件营销' }
       },
       {
@@ -70,6 +94,18 @@ const routes = [
         name: 'Analytics',
         component: () => import('@/views/Analytics.vue'),
         meta: { title: '数据分析' }
+      },
+      {
+        path: 'user-management',
+        name: 'UserManagement',
+        component: () => import('@/views/UserManagement.vue'),
+        meta: { title: '用户管理' }
+      },
+      {
+        path: 'system-config',
+        name: 'SystemConfig',
+        component: () => import('@/views/SystemConfig.vue'),
+        meta: { title: '配置参数' }
       }
     ]
   }

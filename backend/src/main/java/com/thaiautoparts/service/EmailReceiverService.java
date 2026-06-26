@@ -10,6 +10,7 @@ public interface EmailReceiverService {
     InboundEmail getEmailById(Long id);
     void markAsRead(Long id);
     void markAsStarred(Long id, boolean starred);
+    void setPriority(Long id, String priority);
     void deleteEmail(Long id);
     Integer getUnreadCount();
 }

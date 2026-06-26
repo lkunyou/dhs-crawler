@@ -25,6 +25,12 @@ public class EmailRecord {
     @TableField("recipient_email")
     private String recipientEmail;
     
+    @TableField(exist = false)
+    private String recipientName;
+    
+    @TableField(exist = false)
+    private String companyName;
+    
     private String subject;
     private String content;
     private String status;
