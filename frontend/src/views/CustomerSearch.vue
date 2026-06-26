@@ -293,7 +293,7 @@ async function handleFetchUrl() {
   }
   fetchingUrl.value = true
   try {
-    const res = await fetchUrl(url)
+    const res = await fetchUrl(url, searchForm.keyword)
     urlPreviewData.value = res.data
     urlPreviewVisible.value = true
   } catch (e) {

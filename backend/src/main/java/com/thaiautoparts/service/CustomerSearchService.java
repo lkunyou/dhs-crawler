@@ -25,7 +25,8 @@ public interface CustomerSearchService {
     /**
      * 从URL获取并解析公司信息
      * @param url 网站URL
+     * @param keyword 搜索关键字
      * @return 解析出的公司信息
      */
-    Map<String, Object> fetchCompanyFromUrl(String url);
+    Map<String, Object> fetchCompanyFromUrl(String url, String keyword);
 }

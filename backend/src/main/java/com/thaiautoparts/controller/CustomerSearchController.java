@@ -32,7 +32,7 @@ public class CustomerSearchController {
     }
 
     @GetMapping("/fetch-url")
-    public Result<Map<String, Object>> fetchUrl(@RequestParam String url) {
-        return Result.success(customerSearchService.fetchCompanyFromUrl(url));
+    public Result<Map<String, Object>> fetchUrl(@RequestParam String url, @RequestParam(required = false) String keyword) {
+        return Result.success(customerSearchService.fetchCompanyFromUrl(url, keyword));
     }
 }

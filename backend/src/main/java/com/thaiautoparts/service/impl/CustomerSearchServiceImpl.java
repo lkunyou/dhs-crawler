@@ -323,7 +323,7 @@ public class CustomerSearchServiceImpl implements CustomerSearchService {
     }
 
     @Override
-    public Map<String, Object> fetchCompanyFromUrl(String url) {
+    public Map<String, Object> fetchCompanyFromUrl(String url, String keyword) {
         Map<String, Object> company = new HashMap<>();
         try {
             if (url == null || url.isEmpty()) {
@@ -361,11 +361,16 @@ public class CustomerSearchServiceImpl implements CustomerSearchService {
             // 提取联系信息
             extractContactInfo(company, description);
 
-            // 从URL提取域名作为网站
-            String domain = extractDomainFromUrl(url);
+            // 设置网站和来源
             company.put("website", url);
             company.put("source", "URL导入");
-            company.put("searchKeyword", domain);
+            
+            // 设置搜索关键字（优先使用传入的关键字）
+            if (keyword != null && !keyword.isEmpty()) {
+                company.put("searchKeyword", keyword);
+            } else {
+                company.put("searchKeyword", extractDomainFromUrl(url));
+            }
 
             log.info("成功从URL {} 提取公司信息: {}", url, title);
 
