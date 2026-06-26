@@ -2,6 +2,7 @@ package com.thaiautoparts.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -68,6 +69,78 @@ public class Company {
     @TableField("assigned_to")
     private Long assignedTo;
     
+    @TableField("main_products")
+    private String mainProducts;
+    
+    @TableField("main_market")
+    private String mainMarket;
+    
+    @TableField("import_ability")
+    private Integer importAbility;
+    
+    @TableField("purchase_scale")
+    private Integer purchaseScale;
+    
+    @TableField("china_supplier_acceptance")
+    private Integer chinaSupplierAcceptance;
+    
+    @TableField("oem_aftermarket_match")
+    private Integer oemAftermarketMatch;
+    
+    @TableField("export_ability")
+    private Integer exportAbility;
+    
+    @TableField("customization_match")
+    private Integer customizationMatch;
+    
+    @TableField("quality_requirement")
+    private String qualityRequirement;
+    
+    @TableField("price_sensitivity")
+    private String priceSensitivity;
+    
+    @TableField("delivery_requirement")
+    private String deliveryRequirement;
+    
+    @TableField("accept_china_factory")
+    private String acceptChinaFactory;
+    
+    @TableField("customization_ability")
+    private String customizationAbility;
+    
+    @TableField("after_sales_requirement")
+    private String afterSalesRequirement;
+    
+    @TableField("supply_chain_pain_points")
+    private String supplyChainPainPoints;
+    
+    @TableField("recommended_products")
+    private String recommendedProducts;
+    
+    @TableField("recommended_channels")
+    private String recommendedChannels;
+    
+    @TableField("first_email_strategy")
+    private String firstEmailStrategy;
+    
+    @TableField("follow_up_immediately")
+    private String followUpImmediately;
+    
+    @TableField("added_to_crm")
+    private String addedToCrm;
+    
+    @TableField("manual_follow_up")
+    private String manualFollowUp;
+    
+    @TableField("remarketing")
+    private String remarketing;
+    
+    @TableField("email_subject")
+    private String emailSubject;
+    
+    @TableField("development_email")
+    private String developmentEmail;
+    
     @TableField(value = "created_at", fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
     
@@ -76,4 +149,16 @@ public class Company {
     
     @TableField("last_contacted_at")
     private LocalDateTime lastContactedAt;
+    
+    @TableField("core_contact")
+    private String coreContact;
+    
+    @TableField("annual_revenue_usd")
+    private BigDecimal annualRevenueUsd;
+    
+    @TableField("purchase_potential")
+    private String purchasePotential;
+    
+    @TableField("development_priority")
+    private String developmentPriority;
 }

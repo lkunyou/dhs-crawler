@@ -55,6 +55,12 @@ public class ProductController {
         return Result.success(product);
     }
 
+    @GetMapping("/search")
+    public Result<List<Product>> searchProducts(@RequestParam String keyword, @RequestParam(defaultValue = "20") int limit) {
+        List<Product> result = productService.searchProducts(keyword, limit);
+        return Result.success(result);
+    }
+
     @PostMapping
     public Result<Product> createProduct(@RequestBody Product product) {
         Product created = productService.createProduct(product);

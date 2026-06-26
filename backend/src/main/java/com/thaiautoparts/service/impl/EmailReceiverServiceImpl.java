@@ -257,6 +257,41 @@ public class EmailReceiverServiceImpl implements EmailReceiverService {
     }
 
     @Override
+    public List<InboundEmail> searchInbox(String keyword, String fromName, String fromEmail, String subject, String startDate, String endDate) {
+        LambdaQueryWrapper<InboundEmail> wrapper = new LambdaQueryWrapper<>();
+        
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            wrapper.and(w -> w.like(InboundEmail::getFromName, keyword.trim())
+                    .or().like(InboundEmail::getFromEmail, keyword.trim())
+                    .or().like(InboundEmail::getSubject, keyword.trim())
+                    .or().like(InboundEmail::getContent, keyword.trim()));
+        }
+        
+        if (fromName != null && !fromName.trim().isEmpty()) {
+            wrapper.like(InboundEmail::getFromName, fromName.trim());
+        }
+        
+        if (fromEmail != null && !fromEmail.trim().isEmpty()) {
+            wrapper.like(InboundEmail::getFromEmail, fromEmail.trim());
+        }
+        
+        if (subject != null && !subject.trim().isEmpty()) {
+            wrapper.like(InboundEmail::getSubject, subject.trim());
+        }
+        
+        if (startDate != null && !startDate.trim().isEmpty()) {
+            wrapper.ge(InboundEmail::getCreatedAt, startDate.trim() + " 00:00:00");
+        }
+        
+        if (endDate != null && !endDate.trim().isEmpty()) {
+            wrapper.le(InboundEmail::getCreatedAt, endDate.trim() + " 23:59:59");
+        }
+        
+        wrapper.orderByDesc(InboundEmail::getCreatedAt);
+        return inboundEmailMapper.selectList(wrapper);
+    }
+
+    @Override
     public List<InboundEmail> getInboxWithLimit(int limit) {
         LambdaQueryWrapper<InboundEmail> wrapper = new LambdaQueryWrapper<>();
         wrapper.orderByDesc(InboundEmail::getCreatedAt);

@@ -47,6 +47,11 @@ public class CompanyController {
         return Result.success(companyService.getCompanyById(id));
     }
 
+    @GetMapping("/find-by-email")
+    public Result<CompanyDTO> findByEmail(@RequestParam String email) {
+        return Result.success(companyService.findCompanyByEmail(email));
+    }
+
     @PostMapping
     public Result<CompanyDTO> create(@RequestBody CompanyDTO dto) {
         return Result.success(companyService.createCompany(dto));

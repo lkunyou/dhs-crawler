@@ -179,6 +179,14 @@ public class CompanyServiceImpl implements CompanyService {
         return list.stream().map(this::convertToDTO).collect(Collectors.toList());
     }
 
+    @Override
+    public CompanyDTO findCompanyByEmail(String email) {
+        LambdaQueryWrapper<Company> wrapper = new LambdaQueryWrapper<>();
+        wrapper.like(Company::getEmail, email);
+        Company company = companyMapper.selectOne(wrapper);
+        return company != null ? convertToDTO(company) : null;
+    }
+
     private CompanyDTO convertToDTO(Company company) {
         CompanyDTO dto = BeanUtil.copyProperties(company, CompanyDTO.class);
         

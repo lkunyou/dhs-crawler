@@ -11,4 +11,5 @@ public interface ProductService {
     void deleteProduct(Long id);
     java.util.List<Product> listAll();
     void saveBatch(java.util.List<Product> list);
+    java.util.List<Product> searchProducts(String keyword, int limit);
 }

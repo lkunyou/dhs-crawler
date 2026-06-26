@@ -60,10 +60,11 @@ export function trackOpen(trackingId) {
   })
 }
 
-export function getInbox() {
+export function getInbox(params) {
   return request({
     url: '/email/inbox',
-    method: 'get'
+    method: 'get',
+    params
   })
 }
 

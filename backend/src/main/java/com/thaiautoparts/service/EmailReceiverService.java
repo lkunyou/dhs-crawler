@@ -8,6 +8,7 @@ public interface EmailReceiverService {
     List<InboundEmail> getInbox();
     List<InboundEmail> getInboxWithLimit(int limit);
     List<InboundEmail> getUnreadEmails();
+    List<InboundEmail> searchInbox(String keyword, String fromName, String fromEmail, String subject, String startDate, String endDate);
     InboundEmail getEmailById(Long id);
     void markAsRead(Long id);
     void markAsStarred(Long id, boolean starred);

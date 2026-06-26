@@ -106,6 +106,12 @@ const routes = [
         name: 'SystemConfig',
         component: () => import('@/views/SystemConfig.vue'),
         meta: { title: '配置参数' }
+      },
+      {
+        path: 'cmdt-query',
+        name: 'CmdtQuery',
+        component: () => import('@/views/CmdtQuery.vue'),
+        meta: { title: 'CMDT编码查询' }
       }
     ]
   }

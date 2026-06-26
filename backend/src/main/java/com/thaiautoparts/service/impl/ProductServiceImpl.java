@@ -26,10 +26,11 @@ public class ProductServiceImpl implements ProductService {
     public PageResult<Product> listProducts(int page, int size, String productName, String category, String status, String brand, String carModel, String productCode) {
         LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<>();
 
-        if (StrUtil.isNotBlank(productName)) {
+        if (StrUtil.isNotBlank(productName) && StrUtil.isNotBlank(productCode)) {
+            wrapper.and(w -> w.like(Product::getProductName, productName).or().like(Product::getProductCode, productCode));
+        } else if (StrUtil.isNotBlank(productName)) {
             wrapper.like(Product::getProductName, productName);
-        }
-        if (StrUtil.isNotBlank(productCode)) {
+        } else if (StrUtil.isNotBlank(productCode)) {
             wrapper.like(Product::getProductCode, productCode);
         }
         if (StrUtil.isNotBlank(category)) {
@@ -99,7 +100,6 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    @Transactional
     public void saveBatch(List<Product> list) {
         for (Product p : list) {
             if (p.getStatus() == null) {
@@ -107,5 +107,16 @@ public class ProductServiceImpl implements ProductService {
             }
             productMapper.insert(p);
         }
+    }
+
+    @Override
+    public List<Product> searchProducts(String keyword, int limit) {
+        LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<>();
+        if (StrUtil.isNotBlank(keyword)) {
+            wrapper.and(w -> w.like(Product::getProductName, keyword).or().like(Product::getProductCode, keyword));
+        }
+        wrapper.orderByDesc(Product::getCreatedAt);
+        wrapper.last("LIMIT " + limit);
+        return productMapper.selectList(wrapper);
     }
 }

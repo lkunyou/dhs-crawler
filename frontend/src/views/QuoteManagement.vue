@@ -199,23 +199,25 @@
                 <el-input v-model="quoteForm.items[$index].productModel" placeholder="型号" />
               </template>
             </el-table-column>
-            <el-table-column label="数量" width="90">
+            <el-table-column label="数量" width="120">
               <template #default="{ $index }">
                 <el-input
                   v-model.number="quoteForm.items[$index].quantity"
+                  type="number"
                   placeholder="数量"
                   style="width: 100%"
-                  @input="(val) => { quoteForm.items[$index].quantity = parseInt(val) || 1 }"
+                  @blur="(e) => { if (!quoteForm.items[$index].quantity || quoteForm.items[$index].quantity < 1) quoteForm.items[$index].quantity = 1 }"
                 />
               </template>
             </el-table-column>
             <el-table-column label="单价(USD)" width="120">
               <template #default="{ $index }">
                 <el-input
-                  v-model="quoteForm.items[$index].unitPrice"
+                  v-model.number="quoteForm.items[$index].unitPrice"
+                  type="number"
                   placeholder="单价"
                   style="width: 100%"
-                  @input="(val) => { quoteForm.items[$index].unitPrice = parseFloat(val) || 0 }"
+                  @blur="(e) => { if (quoteForm.items[$index].unitPrice < 0) quoteForm.items[$index].unitPrice = 0 }"
                 />
               </template>
             </el-table-column>
@@ -312,7 +314,7 @@ import { Document, Check, Clock, Close, Plus } from '@element-plus/icons-vue'
 import { getQuotes, createQuote, updateQuote, deleteQuote as deleteQuoteApi, getQuote } from '@/api/quote'
 import request from '@/utils/request'
 import { getCompanies } from '@/api/company'
-import { getProducts } from '@/api/product'
+import { searchProducts as searchProductsApi } from '@/api/product'
 
 const quotes = ref([])
 const companies = ref([])
@@ -347,13 +349,13 @@ const defaultItem = () => ({
 const productOptions = ref([])
 
 async function searchProducts(query) {
-  if (!query || query.length < 1) {
+  if (!query || !query.trim()) {
     productOptions.value = []
     return
   }
   try {
-    const res = await getProducts({ page: 1, size: 20, productName: query, productCode: query })
-    const list = res.data?.records || res.data || []
+    const res = await searchProductsApi(query.trim(), 20)
+    const list = res.data || []
     productOptions.value = list.map(p => ({
       id: p.id,
       name: p.productName,

@@ -100,6 +100,18 @@
           <el-descriptions v-else :column="2" border>
             <el-descriptions-item label="公司名称">{{ company.companyName }}</el-descriptions-item>
             <el-descriptions-item label="公司类型">{{ company.companyType }}</el-descriptions-item>
+            <el-descriptions-item label="核心联系人">{{ company.coreContact }}</el-descriptions-item>
+            <el-descriptions-item label="年营收(USD)">
+              <template v-if="company.annualRevenueUsd">
+                <span :style="{ color: parseFloat(company.annualRevenueUsd) >= 10000000 ? '#f56c6c' : parseFloat(company.annualRevenueUsd) >= 1000000 ? '#e6a23c' : '#67c23a' }">
+                  {{ formatRevenue(company.annualRevenueUsd) }}
+                </span>
+              </template>
+            </el-descriptions-item>
+            <el-descriptions-item label="采购潜力">
+              <el-tag :type="getPotentialType(company.purchasePotential)" size="small">{{ company.purchasePotential }}</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="开发优先级">{{ company.developmentPriority }}</el-descriptions-item>
             <el-descriptions-item label="官网">
               <el-link v-if="company.website" :href="company.website" target="_blank">{{ company.website }}</el-link>
             </el-descriptions-item>
@@ -165,6 +177,9 @@
           </el-button>
           <el-button type="success" style="width: 100%; margin-bottom: 10px" @click="handleSendWhatsApp">
             <el-icon><ChatDotRound /></el-icon> 发送WhatsApp
+          </el-button>
+          <el-button type="info" style="width: 100%; margin-bottom: 10px" @click="showEmailTemplate = true">
+            <el-icon><Document /></el-icon> 开发信模板
           </el-button>
           <el-button type="warning" style="width: 100%; margin-bottom: 10px" @click="quoteDialogVisible = true">
             <el-icon><Document /></el-icon> 创建报价
@@ -262,6 +277,29 @@
         <el-button type="primary" @click="saveFollowup">保存记录</el-button>
       </template>
     </el-dialog>
+
+    <!-- 开发信模板预览弹窗 -->
+    <el-dialog v-model="showEmailTemplate" title="开发信模板" width="800px" :close-on-click-modal="false">
+      <div v-if="company.emailSubject || company.developmentEmail" class="email-template-preview">
+        <el-card>
+          <template #header>
+            <span>邮件主题</span>
+          </template>
+          <p style="font-size: 16px; font-weight: bold; color: #303133;">{{ company.emailSubject }}</p>
+        </el-card>
+        <el-card style="margin-top: 15px;">
+          <template #header>
+            <span>邮件内容</span>
+          </template>
+          <div class="email-content" v-html="formatEmailContent(company.developmentEmail)"></div>
+        </el-card>
+      </div>
+      <el-empty v-else description="该客户暂无开发信模板" />
+      <template #footer>
+        <el-button @click="showEmailTemplate = false">关闭</el-button>
+        <el-button type="primary" @click="handleCopyEmail">复制内容</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -278,6 +316,7 @@ const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
 const editMode = ref(false)
+const showEmailTemplate = ref(false)
 
 const contactColumns = [
   { prop: 'fullName', label: '姓名', width: 150 },
@@ -309,6 +348,8 @@ const company = reactive({
   leadScore: 0,
   leadGrade: 'C',
   status: 'New',
+  emailSubject: '',
+  developmentEmail: '',
   contacts: []
 })
 
@@ -485,6 +526,36 @@ async function handleStatusChange(status) {
     console.error(e)
   }
 }
+
+function formatRevenue(val) {
+  const value = parseFloat(val)
+  if (value >= 10000000) return (value / 10000000).toFixed(1) + '千万'
+  if (value >= 10000) return (value / 10000).toFixed(0) + '万'
+  return value.toLocaleString()
+}
+
+function getPotentialType(potential) {
+  const map = { '极高': 'danger', '高': 'warning', '中': 'info', '低': 'default' }
+  return map[potential] || 'default'
+}
+
+function formatEmailContent(content) {
+  if (!content) return ''
+  return content
+    .replace(/\n/g, '<br/>')
+    .replace(/\*\*/g, '')
+    .replace(/• /g, '<span style="color: #409EFF;">•</span> ')
+}
+
+async function handleCopyEmail() {
+  const emailText = `Subject: ${company.emailSubject}\n\n${company.developmentEmail}`
+  try {
+    await navigator.clipboard.writeText(emailText)
+    ElMessage.success('开发信已复制到剪贴板')
+  } catch (e) {
+    ElMessage.error('复制失败，请手动复制')
+  }
+}
 </script>
 
 <style scoped>
@@ -525,5 +596,17 @@ async function handleStatusChange(status) {
 .score-grade {
   font-size: 24px;
   margin-top: 5px;
+}
+
+.email-content {
+  line-height: 1.8;
+  font-size: 14px;
+  color: #303133;
+  white-space: pre-wrap;
+  padding: 10px 0;
+}
+
+.email-content br {
+  margin-bottom: 8px;
 }
 </style>

@@ -361,22 +361,25 @@
                 <el-input v-model="quoteForm.items[$index].productModel" placeholder="型号" />
               </template>
             </el-table-column>
-            <el-table-column label="数量" width="90">
+            <el-table-column label="数量" width="130">
               <template #default="{ $index }">
                 <el-input
                   v-model.number="quoteForm.items[$index].quantity"
+                  type="number"
                   placeholder="10"
                   style="width: 100%"
+                  @blur="(e) => { if (!quoteForm.items[$index].quantity || quoteForm.items[$index].quantity < 1) quoteForm.items[$index].quantity = 1 }"
                 />
               </template>
             </el-table-column>
             <el-table-column label="单价(USD)" width="120">
               <template #default="{ $index }">
                 <el-input
-                  v-model="quoteForm.items[$index].unitPrice"
+                  v-model.number="quoteForm.items[$index].unitPrice"
+                  type="number"
                   placeholder="单价"
                   style="width: 100%"
-                  @input="(val) => { quoteForm.items[$index].unitPrice = parseFloat(val) || 0 }"
+                  @blur="(e) => { if (quoteForm.items[$index].unitPrice < 0) quoteForm.items[$index].unitPrice = 0 }"
                 />
               </template>
             </el-table-column>

@@ -8,6 +8,14 @@ export function getProducts(params) {
   })
 }
 
+export function searchProducts(keyword, limit = 20) {
+  return request({
+    url: '/products/search',
+    method: 'get',
+    params: { keyword, limit }
+  })
+}
+
 export function getProduct(id) {
   return request({
     url: `/products/${id}`,

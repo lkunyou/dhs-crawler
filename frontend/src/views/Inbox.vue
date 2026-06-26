@@ -12,6 +12,55 @@
         </div>
       </template>
 
+      <div class="search-form">
+        <el-form :model="searchForm" inline class="search-inline-form">
+          <el-form-item label="关键词">
+            <el-input 
+              v-model="searchForm.keyword" 
+              placeholder="姓名/邮箱/标题/内容" 
+              clearable 
+              @keyup.enter="handleSearch"
+            />
+          </el-form-item>
+          <el-form-item label="发件人">
+            <el-input 
+              v-model="searchForm.fromName" 
+              placeholder="发件人姓名" 
+              clearable 
+            />
+          </el-form-item>
+          <el-form-item label="邮箱">
+            <el-input 
+              v-model="searchForm.fromEmail" 
+              placeholder="发件人邮箱" 
+              clearable 
+            />
+          </el-form-item>
+          <el-form-item label="标题">
+            <el-input 
+              v-model="searchForm.subject" 
+              placeholder="邮件标题" 
+              clearable 
+            />
+          </el-form-item>
+          <el-form-item label="日期范围">
+            <el-date-picker
+              v-model="searchForm.dateRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              format="YYYY-MM-DD"
+              value-format="YYYY-MM-DD"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleSearch">搜索</el-button>
+            <el-button @click="handleReset">重置</el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+
       <div class="inbox-content">
         <div class="email-list">
           <div 
@@ -303,6 +352,7 @@ import { ElMessage } from 'element-plus'
 import { Star, Delete, Message, MessageBox, Flag, ChatDotRound, Plus } from '@element-plus/icons-vue'
 import { sendCustomEmail } from '@/api/email'
 import { getInbox, getLatestEmails, markAsRead, markAsStarred, setPriority, deleteEmail, fetchEmails, getEmailById, markAsReplied, getRepliesByEmailId } from '@/api/email'
+import { findCompanyByEmail } from '@/api/company'
 
 const emails = ref([])
 const selectedEmail = ref(null)
@@ -314,7 +364,8 @@ const replyForm = ref({
   toEmail: '',
   subject: '',
   content: '',
-  inReplyToEmailId: null
+  inReplyToEmailId: null,
+  companyId: null
 })
 const replyLoading = ref(false)
 const replyingToEmail = ref(null)
@@ -323,14 +374,22 @@ const repliesList = ref([])
 const selectedReply = ref(null)
 const replyDetailVisible = ref(false)
 
+const searchForm = ref({
+  keyword: '',
+  fromName: '',
+  fromEmail: '',
+  subject: '',
+  dateRange: null
+})
+
 onMounted(() => {
   loadInbox()
 })
 
-async function loadInbox() {
+async function loadInbox(params = {}) {
   loading.value = true
   try {
-    const res = await getInbox()
+    const res = await getInbox(params)
     emails.value = res.data
   } catch (e) {
     console.error(e)
@@ -338,6 +397,40 @@ async function loadInbox() {
   } finally {
     loading.value = false
   }
+}
+
+async function handleSearch() {
+  const params = {}
+  if (searchForm.value.keyword) {
+    params.keyword = searchForm.value.keyword
+  }
+  if (searchForm.value.fromName) {
+    params.fromName = searchForm.value.fromName
+  }
+  if (searchForm.value.fromEmail) {
+    params.fromEmail = searchForm.value.fromEmail
+  }
+  if (searchForm.value.subject) {
+    params.subject = searchForm.value.subject
+  }
+  if (searchForm.value.dateRange && searchForm.value.dateRange.length === 2) {
+    params.startDate = searchForm.value.dateRange[0]
+    params.endDate = searchForm.value.dateRange[1]
+  }
+  selectedEmail.value = null
+  await loadInbox(params)
+}
+
+function handleReset() {
+  searchForm.value = {
+    keyword: '',
+    fromName: '',
+    fromEmail: '',
+    subject: '',
+    dateRange: null
+  }
+  selectedEmail.value = null
+  loadInbox()
 }
 
 async function loadReplies(emailId) {
@@ -529,16 +622,30 @@ function truncateContent(content) {
   return text.length > 100 ? text.substring(0, 100) + '...' : text
 }
 
-function openReplyDialog(email) {
+async function openReplyDialog(email) {
   replyingToEmail.value = email
   const replyTo = email.fromEmail
   const subject = email.subject.startsWith('Re:') ? email.subject : 'Re: ' + email.subject
   const originalContent = email.content ? email.content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>') : ''
+  
+  let companyId = email.companyId || null
+  if (!companyId && replyTo) {
+    try {
+      const res = await findCompanyByEmail(replyTo)
+      if (res.data) {
+        companyId = res.data.id
+      }
+    } catch (e) {
+      console.error('查找公司失败:', e)
+    }
+  }
+  
   replyForm.value = {
     toEmail: replyTo,
     subject: subject,
     content: '\n\n\n--- Original Message ---\n' + originalContent,
-    inReplyToEmailId: email.id
+    inReplyToEmailId: email.id,
+    companyId: companyId
   }
   replyDialogVisible.value = true
 }
@@ -559,7 +666,8 @@ async function sendReply() {
       subject: replyForm.value.subject,
       content: replyForm.value.content,
       html: false,
-      inReplyToEmailId: replyForm.value.inReplyToEmailId
+      inReplyToEmailId: replyForm.value.inReplyToEmailId,
+      companyId: replyForm.value.companyId
     })
     // 标记原邮件为已回复
     if (replyingToEmail.value) {
@@ -599,10 +707,24 @@ async function sendReply() {
   gap: 8px;
 }
 
+.search-form {
+  padding: 16px;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.search-inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
 .inbox-content {
   display: flex;
   gap: 20px;
-  height: calc(100% - 60px);
+  height: calc(100% - 140px);
   margin-top: 20px;
 }
 

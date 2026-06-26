@@ -196,6 +196,15 @@ const allMenuItems = [
     ]
   },
   { 
+    path: '/tools', 
+    label: '工具', 
+    icon: markRaw(Search),
+    roles: ['admin', 'user', 'sales', 'operator'],
+    children: [
+      { path: '/cmdt-query', label: 'CMDT编码查询', icon: markRaw(Search), roles: ['admin', 'user', 'sales', 'operator'] }
+    ]
+  },
+  { 
     path: '/system-config', 
     label: '系统配置', 
     icon: markRaw(Setting),

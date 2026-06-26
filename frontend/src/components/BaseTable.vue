@@ -81,7 +81,7 @@
         :page-sizes="pageSizes"
         :layout="paginationLayout"
         @size-change="handleSizeChange"
-        @current-change="handleCurrentChange"
+        @current-change="handleCurrentPageChange"
         class="pagination"
       />
     </template>

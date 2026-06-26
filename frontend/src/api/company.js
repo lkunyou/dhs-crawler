@@ -65,3 +65,11 @@ export function getSourceStats() {
     method: 'get'
   })
 }
+
+export function findCompanyByEmail(email) {
+  return request({
+    url: '/companies/find-by-email',
+    method: 'get',
+    params: { email }
+  })
+}

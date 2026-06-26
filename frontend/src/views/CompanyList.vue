@@ -155,7 +155,12 @@ const companyTypeOptions = [
 
 const columns = [
   { prop: 'companyName', label: '公司名称', minWidth: 200, type: 'link' },
-  { prop: 'city', label: '城市', width: 100 },
+  { prop: 'coreContact', label: '核心联系人', width: 150 },
+  
+  { prop: 'purchasePotential', label: '采购潜力', width: 100, type: 'tag', tagType: (row) => {
+    const map = { '极高': 'danger', '高': 'warning', '中': 'info', '低': 'default' }
+    return map[row.purchasePotential] || 'default'
+  }, tagLabel: (row) => row.purchasePotential || '-' },
   { prop: 'email', label: '邮箱', width: 180, type: 'custom', render: (row) => row.email ? `<a href="mailto:${row.email}" class="el-link el-link--primary">${row.email}</a>` : '-' },
   { prop: 'website', label: '网站', width: 180, type: 'custom', render: (row) => {
     if (!row.website) return '-'

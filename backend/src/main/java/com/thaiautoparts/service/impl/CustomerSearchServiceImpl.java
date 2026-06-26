@@ -209,29 +209,35 @@ public class CustomerSearchServiceImpl implements CustomerSearchService {
             headers.set("Accept", "application/json");
 
             HttpEntity<String> entity = new HttpEntity<>(headers);
-            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
-            Map<String, Object> body = response.getBody();
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            String responseBody = response.getBody();
 
-            if (body != null && body.containsKey("RelatedTopics")) {
-                List<Map<String, Object>> relatedTopics = (List<Map<String, Object>>) body.get("RelatedTopics");
-                for (Map<String, Object> item : relatedTopics) {
-                    if (item.containsKey("Text") && item.containsKey("FirstURL")) {
-                        Map<String, Object> company = new HashMap<>();
-                        String text = (String) item.get("Text");
-                        String firstUrl = (String) item.get("FirstURL");
-                        
-                        // 尝试从URL提取域名作为公司名
-                        String companyName = extractDomainFromUrl(firstUrl);
-                        company.put("companyName", companyName);
-                        company.put("website", firstUrl);
-                        company.put("description", text);
-                        company.put("source", "DuckDuckGo");
-                        company.put("country", country);
-                        company.put("searchKeyword", keyword);
+            if (responseBody != null && !responseBody.isEmpty()) {
+                // 使用Jackson解析JSON
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                Map<String, Object> body = mapper.readValue(responseBody, Map.class);
 
-                        extractContactInfo(company, text);
+                if (body.containsKey("RelatedTopics")) {
+                    List<Map<String, Object>> relatedTopics = (List<Map<String, Object>>) body.get("RelatedTopics");
+                    for (Map<String, Object> item : relatedTopics) {
+                        if (item.containsKey("Text") && item.containsKey("FirstURL")) {
+                            Map<String, Object> company = new HashMap<>();
+                            String text = (String) item.get("Text");
+                            String firstUrl = (String) item.get("FirstURL");
+                            
+                            // 尝试从URL提取域名作为公司名
+                            String companyName = extractDomainFromUrl(firstUrl);
+                            company.put("companyName", companyName);
+                            company.put("website", firstUrl);
+                            company.put("description", text);
+                            company.put("source", "DuckDuckGo");
+                            company.put("country", country);
+                            company.put("searchKeyword", keyword);
 
-                        results.add(company);
+                            extractContactInfo(company, text);
+
+                            results.add(company);
+                        }
                     }
                 }
             }

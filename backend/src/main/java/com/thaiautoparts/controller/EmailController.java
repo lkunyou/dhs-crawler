@@ -83,8 +83,14 @@ public class EmailController {
     }
 
     @GetMapping("/inbox")
-    public Result<List<InboundEmail>> getInbox() {
-        return Result.success(emailReceiverService.getInbox());
+    public Result<List<InboundEmail>> getInbox(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String fromName,
+            @RequestParam(required = false) String fromEmail,
+            @RequestParam(required = false) String subject,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        return Result.success(emailReceiverService.searchInbox(keyword, fromName, fromEmail, subject, startDate, endDate));
     }
 
     @GetMapping("/inbox/latest")
