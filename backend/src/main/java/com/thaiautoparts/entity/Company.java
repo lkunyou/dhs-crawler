@@ -164,4 +164,7 @@ public class Company {
     
     @TableField("development_priority")
     private String developmentPriority;
+    
+    @TableField("description")
+    private String description;
 }

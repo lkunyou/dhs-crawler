@@ -112,6 +112,36 @@ const routes = [
         name: 'CmdtQuery',
         component: () => import('@/views/CmdtQuery.vue'),
         meta: { title: 'CMDT编码查询' }
+      },
+      {
+        path: 'ai-chat',
+        name: 'AiChat',
+        component: () => import('@/views/AiChat.vue'),
+        meta: { title: 'AI 对话' }
+      },
+      {
+        path: 'agent-management',
+        name: 'AgentManagement',
+        component: () => import('@/views/AgentManagement.vue'),
+        meta: { title: 'Agent 管理' }
+      },
+      {
+        path: 'mcp-management',
+        name: 'McpManagement',
+        component: () => import('@/views/McpManagement.vue'),
+        meta: { title: 'MCP 管理' }
+      },
+      {
+        path: 'ai-model-management',
+        name: 'AiModelManagement',
+        component: () => import('@/views/AiModelManagement.vue'),
+        meta: { title: 'AI 模型配置' }
+      },
+      {
+        path: 'ai-workflow-management',
+        name: 'AiWorkflowManagement',
+        component: () => import('@/views/AiWorkflowManagement.vue'),
+        meta: { title: 'Agent 工作流' }
       }
     ]
   }

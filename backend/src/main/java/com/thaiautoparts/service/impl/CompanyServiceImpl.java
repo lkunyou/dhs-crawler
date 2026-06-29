@@ -36,14 +36,21 @@ public class CompanyServiceImpl implements CompanyService {
     private final QuotationMapper quotationMapper;
 
     @Override
-    public PageResult<CompanyDTO> listCompanies(int page, int size, String keyword, String leadGrade, String status) {
+    public PageResult<CompanyDTO> listCompanies(int page, int size, String companyName, String website, String email, String whatsapp, String leadGrade, String status) {
         LambdaQueryWrapper<Company> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Company::getIsDuplicate, false);
         
-        if (StrUtil.isNotBlank(keyword)) {
-            wrapper.like(Company::getCompanyName, keyword)
-                   .or()
-                   .like(Company::getWebsite, keyword);
+        if (StrUtil.isNotBlank(companyName)) {
+            wrapper.like(Company::getCompanyName, companyName);
+        }
+        if (StrUtil.isNotBlank(website)) {
+            wrapper.like(Company::getWebsite, website);
+        }
+        if (StrUtil.isNotBlank(email)) {
+            wrapper.like(Company::getEmail, email);
+        }
+        if (StrUtil.isNotBlank(whatsapp)) {
+            wrapper.like(Company::getWhatsapp, whatsapp);
         }
         if (StrUtil.isNotBlank(leadGrade)) {
             wrapper.eq(Company::getLeadGrade, leadGrade);

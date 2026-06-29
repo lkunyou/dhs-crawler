@@ -91,6 +91,9 @@
             <el-form-item label="员工规模">
               <el-input v-model="company.employeeCount" placeholder="例如: 1-10, 11-50" />
             </el-form-item>
+            <el-form-item label="公司描述">
+              <el-input v-model="company.description" type="textarea" :rows="4" placeholder="输入公司描述信息" />
+            </el-form-item>
             <el-form-item>
               <el-button type="primary" @click="saveCompany">保存</el-button>
               <el-button @click="cancelEdit">取消</el-button>
@@ -122,6 +125,7 @@
             <el-descriptions-item label="WhatsApp">{{ company.whatsapp }}</el-descriptions-item>
             <el-descriptions-item label="邮箱">{{ company.email }}</el-descriptions-item>
             <el-descriptions-item label="员工规模">{{ company.employeeCount }}</el-descriptions-item>
+            <el-descriptions-item label="公司描述" :span="2">{{ company.description || '-' }}</el-descriptions-item>
           </el-descriptions>
         </el-card>
 
@@ -161,12 +165,20 @@
 
       <el-col :span="8">
         <el-card>
-          <template #header>客户评分</template>
+          <template #header>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span>客户评分</span>
+              <el-button type="text" size="small" @click="showScoreEdit = true"><el-icon><Edit /></el-icon> 编辑</el-button>
+            </div>
+          </template>
           <div class="score-display">
             <div class="score-circle">
               <span class="score-number">{{ company.leadScore || 0 }}</span>
               <span class="score-grade">{{ company.leadGrade || 'C' }}</span>
             </div>
+          </div>
+          <div style="margin-top: 10px; text-align: center;">
+            <el-button type="primary" size="small" @click="handleRecalculateScore">重新计算评分</el-button>
           </div>
         </el-card>
 
@@ -300,6 +312,26 @@
         <el-button type="primary" @click="handleCopyEmail">复制内容</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="showScoreEdit" title="编辑客户评分" width="400px">
+      <el-form :model="scoreForm" label-width="80px">
+        <el-form-item label="评分">
+          <el-slider v-model="scoreForm.score" :min="0" :max="100" :step="1" show-input />
+        </el-form-item>
+        <el-form-item label="等级">
+          <el-select v-model="scoreForm.grade" style="width: 100%">
+            <el-option label="S级" value="S" />
+            <el-option label="A级" value="A" />
+            <el-option label="B级" value="B" />
+            <el-option label="C级" value="C" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showScoreEdit = false">取消</el-button>
+        <el-button type="primary" @click="handleSaveScore">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -309,6 +341,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Message, ChatDotRound, Document, Edit } from '@element-plus/icons-vue'
 import { getCompany, updateCompany } from '@/api/company'
+import request from '@/utils/request'
 import { getFollowUpRecords, addFollowUpRecord } from '@/api/followUp'
 import { BaseTable } from '@/components'
 
@@ -317,6 +350,12 @@ const router = useRouter()
 const loading = ref(false)
 const editMode = ref(false)
 const showEmailTemplate = ref(false)
+const showScoreEdit = ref(false)
+
+const scoreForm = reactive({
+  score: 0,
+  grade: 'C'
+})
 
 const contactColumns = [
   { prop: 'fullName', label: '姓名', width: 150 },
@@ -350,6 +389,7 @@ const company = reactive({
   status: 'New',
   emailSubject: '',
   developmentEmail: '',
+  description: '',
   contacts: []
 })
 
@@ -406,6 +446,53 @@ async function saveCompany() {
 function cancelEdit() {
   Object.assign(company, originalCompany.value)
   editMode.value = false
+}
+
+// 编辑评分
+function handleScoreEdit() {
+  scoreForm.score = company.leadScore || 0
+  scoreForm.grade = company.leadGrade || 'C'
+  showScoreEdit.value = true
+}
+
+// 保存评分
+async function handleSaveScore() {
+  loading.value = true
+  try {
+    await updateCompany(company.id, {
+      leadScore: scoreForm.score,
+      leadGrade: scoreForm.grade
+    })
+    company.leadScore = scoreForm.score
+    company.leadGrade = scoreForm.grade
+    ElMessage.success('评分保存成功')
+    showScoreEdit.value = false
+  } catch (e) {
+    ElMessage.error('保存失败')
+    console.error(e)
+  } finally {
+    loading.value = false
+  }
+}
+
+// 重新计算评分
+async function handleRecalculateScore() {
+  loading.value = true
+  try {
+    await request({
+      url: `/companies/${company.id}/score`,
+      method: 'post'
+    })
+    const res = await getCompany(company.id)
+    company.leadScore = res.data.leadScore
+    company.leadGrade = res.data.leadGrade
+    ElMessage.success('评分已重新计算')
+  } catch (e) {
+    ElMessage.error('计算失败')
+    console.error(e)
+  } finally {
+    loading.value = false
+  }
 }
 
 // 发送邮件

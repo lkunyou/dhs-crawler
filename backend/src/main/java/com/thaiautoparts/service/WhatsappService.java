@@ -9,6 +9,7 @@ public interface WhatsappService {
     void sendImageMessage(Long companyId, Long contactId, String phoneNumber, String imageUrl, String caption);
     void sendBatchMessages(List<Long> companyIds, String templateContent);
     List<WhatsappRecord> getMessageRecords(Long companyId);
+    List<WhatsappRecord> getAllMessageRecords();
     Map<String, Object> getWhatsappStats();
     void handleDelivery(String messageId);
     void handleRead(String messageId);

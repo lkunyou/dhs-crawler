@@ -127,7 +127,10 @@ const whatsappSendForm = reactive({
 })
 
 const searchFields = [
-  { type: 'input', prop: 'keyword', label: '关键词', placeholder: '公司名/网站' },
+  { type: 'input', prop: 'companyName', label: '公司名称', placeholder: '搜索公司名' },
+  { type: 'input', prop: 'website', label: '网站', placeholder: '搜索网址' },
+  { type: 'input', prop: 'email', label: '邮箱', placeholder: '搜索邮箱' },
+  { type: 'input', prop: 'whatsapp', label: 'WhatsApp', placeholder: '搜索号码' },
   { type: 'select', prop: 'leadGrade', label: '客户等级', placeholder: '全部', options: [
     { label: 'S级', value: 'S' },
     { label: 'A级', value: 'A' },
@@ -156,6 +159,11 @@ const companyTypeOptions = [
 const columns = [
   { prop: 'companyName', label: '公司名称', minWidth: 200, type: 'link' },
   { prop: 'coreContact', label: '核心联系人', width: 150 },
+  { prop: 'leadScore', label: '评分', width: 80, type: 'custom', render: (row) => row.leadScore ? `<span style="font-weight:600;color:#409eff">${row.leadScore}</span>` : '-' },
+  { prop: 'leadGrade', label: '等级', width: 80, type: 'tag', tagType: (row) => {
+    const map = { 'S': 'danger', 'A': 'warning', 'B': 'info', 'C': 'default' }
+    return map[row.leadGrade] || 'default'
+  }, tagLabel: (row) => row.leadGrade || '-' },
   
   { prop: 'purchasePotential', label: '采购潜力', width: 100, type: 'tag', tagType: (row) => {
     const map = { '极高': 'danger', '高': 'warning', '中': 'info', '低': 'default' }
@@ -203,10 +211,11 @@ onMounted(() => {
   loadData()
 })
 
-async function loadData() {
+async function loadData(searchParams = {}) {
   loading.value = true
   try {
-    const res = await getCompanies(pagination)
+    const params = { ...pagination, ...searchParams }
+    const res = await getCompanies(params)
     tableData.value = res.data.records
     pagination.total = res.data.total
   } catch (e) {

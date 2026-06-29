@@ -90,8 +90,20 @@ public class SystemConfigServiceImpl implements SystemConfigService {
             new SystemConfig() {{ setConfigKey("rate-limit.email-daily"); setConfigValue("100"); setConfigType("rate-limit"); setDescription("每日邮件发送上限"); }},
             new SystemConfig() {{ setConfigKey("rate-limit.whatsapp-daily"); setConfigValue("50"); setConfigType("rate-limit"); setDescription("每日WhatsApp发送上限"); }},
             new SystemConfig() {{ setConfigKey("rate-limit.linkedin-daily"); setConfigValue("100"); setConfigType("rate-limit"); setDescription("每日LinkedIn操作上限"); }},
+            // Twilio配置
+            new SystemConfig() {{ setConfigKey("twilio.account-sid"); setConfigValue(""); setConfigType("twilio"); setDescription("Twilio Account SID"); }},
+            new SystemConfig() {{ setConfigKey("twilio.auth-token"); setConfigValue(""); setConfigType("twilio"); setDescription("Twilio Auth Token"); }},
+            new SystemConfig() {{ setConfigKey("twilio.whatsapp-number"); setConfigValue(""); setConfigType("twilio"); setDescription("Twilio WhatsApp号码"); }},
             // 基本配置
-            new SystemConfig() {{ setConfigKey("upload_base_path"); setConfigValue("./uploads"); setConfigType("common"); setDescription("文件上传基础路径"); }}
+            new SystemConfig() {{ setConfigKey("upload_base_path"); setConfigValue("./uploads"); setConfigType("common"); setDescription("文件上传基础路径"); }},
+            // AI 大模型配置
+            new SystemConfig() {{ setConfigKey("ai.default-provider"); setConfigValue("deepseek"); setConfigType("ai"); setDescription("默认AI模型提供商"); }},
+            new SystemConfig() {{ setConfigKey("ai.deepseek.api-key"); setConfigValue(""); setConfigType("ai"); setDescription("DeepSeek API密钥"); }},
+            new SystemConfig() {{ setConfigKey("ai.kimi.api-key"); setConfigValue(""); setConfigType("ai"); setDescription("Kimi API密钥"); }},
+            new SystemConfig() {{ setConfigKey("ai.glm.api-key"); setConfigValue(""); setConfigType("ai"); setDescription("智谱GLM API密钥"); }},
+            new SystemConfig() {{ setConfigKey("ai.doubao.api-key"); setConfigValue(""); setConfigType("ai"); setDescription("豆包Doubao API密钥"); }},
+            new SystemConfig() {{ setConfigKey("ai.qwen.api-key"); setConfigValue(""); setConfigType("ai"); setDescription("通义千问Qwen API密钥"); }},
+            new SystemConfig() {{ setConfigKey("ai.minimax.api-key"); setConfigValue(""); setConfigType("ai"); setDescription("MiniMax API密钥"); }}
         );
         for (SystemConfig c : defaults) {
             if (getByKey(c.getConfigKey()) == null) {

@@ -1,5 +1,6 @@
 package com.thaiautoparts.controller;
 
+import com.thaiautoparts.config.TwilioConfig;
 import com.thaiautoparts.dto.Result;
 import com.thaiautoparts.entity.SystemConfig;
 import com.thaiautoparts.service.SystemConfigService;
@@ -14,6 +15,7 @@ import java.util.List;
 public class SystemConfigController {
 
     private final SystemConfigService systemConfigService;
+    private final TwilioConfig twilioConfig;
 
     @GetMapping
     public Result<List<SystemConfig>> listAll() {
@@ -49,6 +51,12 @@ public class SystemConfigController {
     @PostMapping("/init-defaults")
     public Result<Void> initDefaults() {
         systemConfigService.initDefaultConfigs();
+        return Result.success();
+    }
+
+    @PostMapping("/refresh-twilio")
+    public Result<Void> refreshTwilioConfig() {
+        twilioConfig.refreshConfig();
         return Result.success();
     }
 }

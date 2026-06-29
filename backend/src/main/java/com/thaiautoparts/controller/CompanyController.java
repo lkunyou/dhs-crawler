@@ -36,10 +36,13 @@ public class CompanyController {
     public Result<PageResult<CompanyDTO>> list(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String companyName,
+            @RequestParam(required = false) String website,
+            @RequestParam(required = false) String email,
+            @RequestParam(required = false) String whatsapp,
             @RequestParam(required = false) String leadGrade,
             @RequestParam(required = false) String status) {
-        return Result.success(companyService.listCompanies(page, size, keyword, leadGrade, status));
+        return Result.success(companyService.listCompanies(page, size, companyName, website, email, whatsapp, leadGrade, status));
     }
 
     @GetMapping("/{id}")

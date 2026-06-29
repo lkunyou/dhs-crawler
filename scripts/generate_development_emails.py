@@ -382,13 +382,19 @@ def generate_email_by_type(company):
     else:
         return generate_general_email(company)
 
-BLOCK_FOOTER = f"""{SENDER_NAME}
-Export Sales Manager
-{SENDER_COMPANY}
-📞 {SENDER_PHONE}
-📧 {SENDER_EMAIL}
-🌐 {SENDER_DOMAIN}
-🏭 Foshan City, Guangdong Province, China"""
+BLOCK_FOOTER = """Best regards,
+
+Sales Team
+
+Business Development Manager
+
+Foshan Dinghesheng Auto Parts Co., Ltd.
+
+market@carparts-land.com
+
++86 180-7886-5445
+
+https://www.carparts-land.com/"""
 
 def save_email_to_db(conn, company_id, subject, email_body):
     cursor = conn.cursor()

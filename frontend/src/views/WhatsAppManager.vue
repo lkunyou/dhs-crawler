@@ -76,9 +76,21 @@
                   <el-tag :type="getStatusType(row.status)" size="small">{{ getStatusLabel(row.status) }}</el-tag>
                 </template>
               </el-table-column>
-              <el-table-column prop="sentAt" label="发送时间" width="180" />
-              <el-table-column prop="readAt" label="已读时间" width="180" />
-              <el-table-column prop="repliedAt" label="回复时间" width="180" />
+              <el-table-column prop="sentAt" label="发送时间" width="180">
+                <template #default="{ row }">
+                  {{ formatDateTime(row.sentAt) }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="readAt" label="已读时间" width="180">
+                <template #default="{ row }">
+                  {{ formatDateTime(row.readAt) }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="repliedAt" label="回复时间" width="180">
+                <template #default="{ row }">
+                  {{ formatDateTime(row.repliedAt) }}
+                </template>
+              </el-table-column>
             </el-table>
           </el-card>
         </el-col>
@@ -127,7 +139,7 @@
       </el-form>
       <template #footer>
         <el-button @click="showSendDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleSend">发送</el-button>
+        <el-button type="primary" @click="handleSend" :loading="sending">发送</el-button>
       </template>
     </el-dialog>
   </div>
@@ -137,11 +149,13 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getCompanies } from '@/api/company'
+import { sendWhatsappText, getAllWhatsappRecords } from '@/api/whatsapp'
 
 const showSendDialog = ref(false)
 const activeTemplate = ref('1')
 const companyOptions = ref([])
 const companyLoading = ref(false)
+const sending = ref(false)
 
 const sendForm = reactive({
   companyId: null,
@@ -150,11 +164,21 @@ const sendForm = reactive({
   templateId: null
 })
 
-const messageRecords = ref([
-  { phoneNumber: '+66812345678', content: 'Sawadee ka! I\'m from...', status: 'Read', sentAt: '2024-01-15 10:00', readAt: '2024-01-15 10:05', repliedAt: null },
-  { phoneNumber: '+66898765432', content: 'Here are our best-selling...', status: 'Delivered', sentAt: '2024-01-15 10:30', readAt: null, repliedAt: null },
-  { phoneNumber: '+66823456789', content: 'May I know what products...', status: 'Replied', sentAt: '2024-01-14 14:00', readAt: '2024-01-14 14:10', repliedAt: '2024-01-14 15:30' }
-])
+const messageRecords = ref([])
+
+async function loadMessageRecords() {
+  try {
+    const res = await getAllWhatsappRecords()
+    messageRecords.value = res.data || []
+  } catch (e) {
+    console.error('加载发送记录失败:', e)
+    messageRecords.value = []
+  }
+}
+
+onMounted(() => {
+  loadMessageRecords()
+})
 
 const templates = {
   1: `Sawadee ka! 🙏\n\nI'm [Name] from [Company], a professional auto parts manufacturer in China.\n\nWe specialize in:\n• Mirror Covers (Toyota/Isuzu)\n• Front Grilles\n• Bumper Assemblies\n\nCan I send you our catalog?`,
@@ -191,13 +215,35 @@ function useTemplate(id) {
   ElMessage.success('已加载话术模板')
 }
 
-function handleSend() {
+async function handleSend() {
   if (!sendForm.content) {
     ElMessage.warning('请输入消息内容')
     return
   }
-  ElMessage.success('WhatsApp消息已发送')
-  showSendDialog.value = false
+  if (!sendForm.companyId) {
+    ElMessage.warning('请选择目标客户')
+    return
+  }
+  
+  sending.value = true
+  try {
+    const company = companyOptions.value.find(c => c.id === sendForm.companyId)
+    await sendWhatsappText({
+      companyId: sendForm.companyId,
+      phoneNumber: company?.phone || '',
+      content: sendForm.content
+    })
+    ElMessage.success('WhatsApp消息发送任务已创建')
+    showSendDialog.value = false
+    sendForm.content = ''
+    sendForm.templateId = null
+    await loadMessageRecords()
+  } catch (e) {
+    ElMessage.error('发送失败')
+    console.error(e)
+  } finally {
+    sending.value = false
+  }
 }
 
 function getStatusType(status) {
@@ -208,6 +254,12 @@ function getStatusType(status) {
 function getStatusLabel(status) {
   const labels = { Pending: '待发送', Sent: '已发送', Delivered: '已送达', Read: '已读', Replied: '已回复', Failed: '发送失败' }
   return labels[status] || status
+}
+
+function formatDateTime(dateStr) {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  return date.toLocaleString('zh-CN')
 }
 </script>
 

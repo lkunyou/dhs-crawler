@@ -3,8 +3,9 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>发送邮件</span>
+          <span>消息发送</span>
           <el-button type="primary" @click="openSendDialog" size="small">发送邮件</el-button>
+          <el-button type="success" @click="openWhatsappDialog" size="small">发送WhatsApp</el-button>
         </div>
       </template>
 
@@ -187,6 +188,43 @@
         <el-button @click="detailDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
+
+    <!-- 发送WhatsApp弹窗 -->
+    <el-dialog v-model="whatsappDialogVisible" title="发送WhatsApp消息" width="700px">
+      <el-form :model="whatsappForm" label-width="100px">
+        <el-form-item label="选择客户" required>
+          <el-select v-model="whatsappForm.companyId" filterable placeholder="搜索客户" style="width: 100%" @change="handleWhatsappCompanySelect">
+            <el-option v-for="c in companies" :key="c.id" :label="c.companyName + (c.phone ? ` (${c.phone})` : '')" :value="c.id" />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item v-if="selectedWhatsappCompany" label="客户信息">
+          <el-card size="small">
+            <div><strong>公司名称：</strong>{{ selectedWhatsappCompany.companyName }}</div>
+            <div><strong>电话：</strong>{{ selectedWhatsappCompany.phone || '-' }}</div>
+            <div><strong>客户等级：</strong>{{ selectedWhatsappCompany.leadGrade || '-' }}</div>
+          </el-card>
+        </el-form-item>
+        
+        <el-form-item label="收件人电话" required>
+          <el-input v-model="whatsappForm.phoneNumber" placeholder="收件人电话" style="width: 100%" />
+        </el-form-item>
+        
+        <el-form-item label="消息内容">
+          <el-input
+            v-model="whatsappForm.content"
+            type="textarea"
+            :rows="10"
+            placeholder="消息内容"
+            style="width: 100%"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="whatsappDialogVisible = false">取消</el-button>
+        <el-button type="success" @click="handleWhatsappSend" :loading="whatsappSending">发送</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -196,14 +234,18 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { sendEmail, sendBatchEmail, sendCustomEmail, getAllEmailRecords, getEmailTemplates } from '@/api/email'
 import { getCompanies } from '@/api/company'
+import { sendWhatsappText } from '@/api/whatsapp'
 
 const route = useRoute()
 const router = useRouter()
 const sending = ref(false)
+const whatsappSending = ref(false)
 const sendDialogVisible = ref(false)
 const detailDialogVisible = ref(false)
 const recipientDialogVisible = ref(false)
+const whatsappDialogVisible = ref(false)
 const selectedRecipient = ref(null)
+const selectedWhatsappCompany = ref(null)
 
 // 查询表单
 const searchForm = reactive({
@@ -236,6 +278,12 @@ const selectedRecord = ref(null)
 const templates = ref([])
 
 const sendRecords = ref([])
+
+const whatsappForm = reactive({
+  companyId: null,
+  phoneNumber: '',
+  content: ''
+})
 
 onMounted(async () => {
   if (route.query.companyId) {
@@ -334,6 +382,50 @@ function handleCompanySelect(companyId) {
     emailForm.toEmail = selectedCompany.value.email || ''
     emailForm.subject = selectedCompany.value.emailSubject || ''
     emailForm.content = selectedCompany.value.developmentEmailTemplate || selectedCompany.value.developmentEmail || ''
+  }
+}
+
+function openWhatsappDialog() {
+  whatsappForm.companyId = null
+  whatsappForm.phoneNumber = ''
+  whatsappForm.content = ''
+  selectedWhatsappCompany.value = null
+  whatsappDialogVisible.value = true
+}
+
+function handleWhatsappCompanySelect(companyId) {
+  selectedWhatsappCompany.value = companies.value.find(c => c.id === companyId) || null
+  if (selectedWhatsappCompany.value) {
+    whatsappForm.phoneNumber = selectedWhatsappCompany.value.phone || ''
+    whatsappForm.content = selectedWhatsappCompany.value.developmentEmailTemplate || selectedWhatsappCompany.value.developmentEmail || ''
+  }
+}
+
+async function handleWhatsappSend() {
+  if (!whatsappForm.phoneNumber.trim()) {
+    ElMessage.warning('请填写收件人电话')
+    return
+  }
+  
+  if (!whatsappForm.content.trim()) {
+    ElMessage.warning('请填写消息内容')
+    return
+  }
+  
+  whatsappSending.value = true
+  try {
+    await sendWhatsappText({
+      companyId: whatsappForm.companyId,
+      phoneNumber: whatsappForm.phoneNumber,
+      content: whatsappForm.content
+    })
+    ElMessage.success('WhatsApp消息发送任务已创建')
+    whatsappDialogVisible.value = false
+  } catch (e) {
+    ElMessage.error('发送失败')
+    console.error(e)
+  } finally {
+    whatsappSending.value = false
   }
 }
 

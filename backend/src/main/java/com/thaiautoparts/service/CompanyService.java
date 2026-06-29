@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 public interface CompanyService {
-    PageResult<CompanyDTO> listCompanies(int page, int size, String keyword, String leadGrade, String status);
+    PageResult<CompanyDTO> listCompanies(int page, int size, String companyName, String website, String email, String whatsapp, String leadGrade, String status);
     CompanyDTO getCompanyById(Long id);
     CompanyDTO createCompany(CompanyDTO dto);
     CompanyDTO updateCompany(Long id, CompanyDTO dto);

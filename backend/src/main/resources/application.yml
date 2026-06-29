@@ -50,6 +50,12 @@ spring:
           timeout: 5000
           writetimeout: 5000
 
+  # Twilio配置
+  twilio:
+    account-sid: ${TWILIO_ACCOUNT_SID:ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX}
+    auth-token: ${TWILIO_AUTH_TOKEN:your_auth_token}
+    whatsapp-number: ${TWILIO_WHATSAPP_NUMBER:+14155238886}
+
   # Jackson配置
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss

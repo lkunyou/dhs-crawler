@@ -5,11 +5,13 @@ import com.thaiautoparts.entity.WhatsappRecord;
 import com.thaiautoparts.service.WhatsappService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/whatsapp")
 @RequiredArgsConstructor
@@ -51,6 +53,11 @@ public class WhatsappController {
         return Result.success(whatsappService.getMessageRecords(companyId));
     }
 
+    @GetMapping("/records")
+    public Result<List<WhatsappRecord>> getAllRecords() {
+        return Result.success(whatsappService.getAllMessageRecords());
+    }
+
     @GetMapping("/stats")
     public Result<Map<String, Object>> getStats() {
         return Result.success(whatsappService.getWhatsappStats());
@@ -72,6 +79,30 @@ public class WhatsappController {
     public Result<Void> handleReply(@RequestBody ReplyRequest request) {
         whatsappService.handleReply(request.getMessageId(), request.getContent());
         return Result.success();
+    }
+
+    @PostMapping("/twilio-webhook")
+    public String handleTwilioWebhook(@RequestParam Map<String, String> params) {
+        String messageSid = params.get("MessageSid");
+        String messageStatus = params.get("MessageStatus");
+        String body = params.get("Body");
+        String from = params.get("From");
+        
+        log.info("Twilio webhook received - MessageSid: {}, Status: {}, From: {}", messageSid, messageStatus, from);
+        
+        if ("delivered".equalsIgnoreCase(messageStatus)) {
+            whatsappService.handleDelivery(messageSid);
+        } else if ("read".equalsIgnoreCase(messageStatus)) {
+            whatsappService.handleRead(messageSid);
+        } else if ("failed".equalsIgnoreCase(messageStatus)) {
+            log.warn("Message failed - MessageSid: {}", messageSid);
+        }
+        
+        if (body != null && !body.isEmpty()) {
+            whatsappService.handleReply(messageSid, body);
+        }
+        
+        return "<Response></Response>";
     }
 
     @Data

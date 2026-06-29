@@ -34,4 +34,5 @@ public class CompanyDTO {
     
     private String emailSubject;
     private String developmentEmailTemplate;
+    private String description;
 }

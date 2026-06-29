@@ -196,6 +196,19 @@ const allMenuItems = [
     ]
   },
   { 
+    path: '/ai-chat', 
+    label: 'AI 对话', 
+    icon: markRaw(ChatDotRound),
+    roles: ['admin', 'user', 'sales', 'operator'],
+    children: [
+      { path: '/ai-chat', label: 'AI 对话', icon: markRaw(ChatDotRound), roles: ['admin', 'user', 'sales', 'operator'] },
+      { path: '/agent-management', label: 'Agent 管理', icon: markRaw(ChatDotRound), roles: ['admin'] },
+      { path: '/mcp-management', label: 'MCP 管理', icon: markRaw(ChatDotRound), roles: ['admin'] },
+      { path: '/ai-model-management', label: 'AI 模型配置', icon: markRaw(ChatDotRound), roles: ['admin'] },
+      { path: '/ai-workflow-management', label: 'Agent 工作流', icon: markRaw(ChatDotRound), roles: ['admin'] }
+    ]
+  },
+  { 
     path: '/tools', 
     label: '工具', 
     icon: markRaw(Search),
