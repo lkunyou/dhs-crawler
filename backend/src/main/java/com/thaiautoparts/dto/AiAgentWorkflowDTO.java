@@ -22,6 +22,9 @@ public class AiAgentWorkflowDTO {
         private String sourceNodeId;
         private String targetNodeId;
         private String type;
+        private String sourceAnchorId;
+        private String targetAnchorId;
+        private List<Map<String, Object>> pointsList;
     }
     
     @Data
@@ -31,6 +34,8 @@ public class AiAgentWorkflowDTO {
         private String name;
         private String type; // agent, mcp, delay, condition, loop, knowledge, knowledgeWrite, subflow, aggregate, script, reply, http, sql, java, classifier, extractor, end
         private String nodeType; // llm, classifier, extractor, knowledge, knowledgeWrite, condition, loop, subflow, aggregate, script, reply, tool, http, sql, java, end
+        private Double x; // 画布X坐标
+        private Double y; // 画布Y坐标
         private String config; // JSON配置
         private String nextStep; // 下一步
         private String condition; // 条件表达式

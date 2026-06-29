@@ -97,7 +97,7 @@
       <div class="canvas-area" ref="lfContainer"></div>
 
       <!-- 右侧属性面板 -->
-      <div class="property-panel" v-if="selectedNode">
+      <div class="property-panel" v-if="selectedNode" @click.stop>
         <div class="panel-title">
           节点属性
           <el-icon style="cursor:pointer; margin-left: auto;" @click="selectedNode = null"><Close /></el-icon>
@@ -163,7 +163,7 @@
             <el-input v-model="nodeForm.toolName" placeholder="Java类全名" @blur="applyNodeChanges" />
           </el-form-item>
           <el-divider />
-          <el-button type="danger" size="small" @click="deleteSelectedNode" style="width: 100%">删除节点</el-button>
+          <el-button type="danger" size="small" @click.stop="deleteSelectedNode" style="width: 100%">删除节点</el-button>
         </el-form>
       </div>
     </div>
@@ -436,27 +436,49 @@ const applyNodeChanges = () => {
 }
 
 const deleteSelectedNode = () => {
-  if (!lf.value || !nodeForm.value.id) return
-  const nodeId = nodeForm.value.id
-  
-  try {
-    // 方法1: 使用 deleteNode
-    lf.value.deleteNode(nodeId)
-  } catch (e) {
-    console.log('[WorkflowCanvas] deleteNode failed, trying alternative:', e)
-    try {
-      // 方法2: 使用 graphModel
-      lf.value.graphModel.deleteNode(nodeId)
-    } catch (e2) {
-      console.error('[WorkflowCanvas] All delete methods failed:', e2)
-      ElMessage.error('删除失败: ' + e2.message)
-      return
-    }
+  alert(`删除函数被调用，节点ID: ${nodeForm.value.id}`)
+  console.log('[WorkflowCanvas] deleteSelectedNode called, lf:', !!lf.value, 'nodeId:', nodeForm.value.id)
+  if (!lf.value || !nodeForm.value.id) {
+    console.warn('[WorkflowCanvas] Delete aborted: lf or nodeId missing')
+    ElMessage.warning('无法删除：节点未选中')
+    return
   }
-  
+  const nodeId = nodeForm.value.id
+
+  // 先检查节点是否存在
+  const nodeModel = lf.value.getNodeModelById(nodeId)
+  console.log('[WorkflowCanvas] Node model found:', !!nodeModel)
+
+  if (!nodeModel) {
+    ElMessage.warning('节点不存在或已被删除')
+    selectedNode.value = null
+    nodeForm.value = { id: '', name: '', nodeType: '', inputVars: '', outputVars: '', model: '', prompt: '', scriptCode: '', condition: '', toolName: '' }
+    return
+  }
+
+  try {
+    console.log('[WorkflowCanvas] Attempting to delete node via graphModel:', nodeId)
+    // 直接使用 graphModel 删除
+    lf.value.graphModel.deleteNode(nodeId)
+    console.log('[WorkflowCanvas] graphModel.deleteNode succeeded')
+
+    // 验证节点是否真的被删除
+    const stillExists = lf.value.getNodeModelById(nodeId)
+    console.log('[WorkflowCanvas] Node still exists after delete:', !!stillExists)
+
+    if (stillExists) {
+      throw new Error('节点删除后仍然存在')
+    }
+  } catch (e) {
+    console.error('[WorkflowCanvas] Delete failed:', e)
+    ElMessage.error('删除失败: ' + e.message)
+    return
+  }
+
   selectedNode.value = null
   nodeForm.value = { id: '', name: '', nodeType: '', inputVars: '', outputVars: '', model: '', prompt: '', scriptCode: '', condition: '', toolName: '' }
   updateStepsFromCanvas()
+  ElMessage.success('节点已删除')
 }
 
 const zoomIn = () => lf.value?.zoom(true)
@@ -506,7 +528,7 @@ const loadStepsToCanvas = (data) => {
   console.log('[WorkflowCanvas] loadStepsToCanvas:', {
     stepsCount: steps.length,
     edgesCount: edges.length,
-    edges: edges
+    edges: JSON.parse(JSON.stringify(edges))
   })
 
   if (!steps.length) return
@@ -514,9 +536,11 @@ const loadStepsToCanvas = (data) => {
   lf.value.clearData()
   nodeCounter = 0
 
-  // 加载节点
+  // 加载节点 - 先记录所有节点ID
+  const loadedNodeIds = new Set()
   steps.forEach((step, i) => {
     const nodeId = step.id || `node_${i}`
+    loadedNodeIds.add(nodeId)
     const info = nodeTypeMap[step.nodeType] || nodeTypeMap.llm
     lf.value.addNode({
       id: nodeId, type: 'rect',
@@ -538,9 +562,38 @@ const loadStepsToCanvas = (data) => {
     nodeCounter++
   })
 
+  console.log('[WorkflowCanvas] Loaded node IDs:', Array.from(loadedNodeIds))
+
   // 加载连线
   if (edges.length > 0) {
-    edges.forEach(edge => {
+    // 去重：同一 sourceNodeId -> targetNodeId 只保留最后一条
+    const uniqueEdges = []
+    const edgeKeys = new Set()
+    // 反向遍历，保留最后出现的边
+    for (let i = edges.length - 1; i >= 0; i--) {
+      const edge = edges[i]
+      const key = `${edge.sourceNodeId}->${edge.targetNodeId}`
+      if (!edgeKeys.has(key)) {
+        edgeKeys.add(key)
+        uniqueEdges.unshift(edge)
+      }
+    }
+    
+    console.log('[WorkflowCanvas] Deduplicated edges:', edges.length, '->', uniqueEdges.length)
+
+    uniqueEdges.forEach((edge, idx) => {
+      console.log(`[WorkflowCanvas] Loading edge[${idx}]: ${edge.sourceNodeId} -> ${edge.targetNodeId}`)
+      
+      // 验证源节点和目标节点是否存在
+      if (!loadedNodeIds.has(edge.sourceNodeId)) {
+        console.warn(`[WorkflowCanvas] Edge[${idx}] source node '${edge.sourceNodeId}' not found!`)
+        return
+      }
+      if (!loadedNodeIds.has(edge.targetNodeId)) {
+        console.warn(`[WorkflowCanvas] Edge[${idx}] target node '${edge.targetNodeId}' not found!`)
+        return
+      }
+      
       const edgeData = {
         id: edge.id,
         sourceNodeId: edge.sourceNodeId,
@@ -551,8 +604,15 @@ const loadStepsToCanvas = (data) => {
       if (edge.pointsList && edge.pointsList.length > 0) {
         edgeData.pointsList = edge.pointsList
       }
+      
       lf.value.addEdge(edgeData)
     })
+    
+    // 验证加载后的边
+    setTimeout(() => {
+      const addedEdges = lf.value.getGraphData()?.edges || []
+      console.log('[WorkflowCanvas] Edges after loading:', addedEdges.map(e => `${e.sourceNodeId}->${e.targetNodeId}`))
+    }, 100)
   } else {
     // 旧数据没有连线信息，按顺序连接
     for (let i = 0; i < steps.length - 1; i++) {
@@ -587,9 +647,12 @@ const updateStepsFromCanvas = () => {
     else if (nt === 'java') stepType = 'java'
     else if (nt === 'classifier') stepType = 'classifier'
     else if (nt === 'extractor') stepType = 'extractor'
+    const savedX = nodeModel?.x ?? node.x ?? 0
+    const savedY = nodeModel?.y ?? node.y ?? 0
     return {
       id: node.id, name: node.text?.value || node.text || '',
       type: stepType, nodeType: nt,
+      x: savedX, y: savedY,
       config: props.config || '{}',
       inputVars: props.inputVars || '',
       outputVars: props.outputVars || '',
@@ -599,24 +662,56 @@ const updateStepsFromCanvas = () => {
     }
   })
 
-  // 保存连线数据
-  const edges = gd.edges.map(edge => {
+  // 去重边：LogicFlow 在用户重新连接边时会创建新边而不会删除旧边
+  // 去重 key 需要包含锚点信息，因为同一对节点之间可能有多条边（不同锚点）
+  const edgeMap = new Map()
+  
+  gd.edges.forEach(edge => {
     const edgeModel = lf.value.getEdgeModelById(edge.id)
-    const src = edgeModel?.sourceNodeId || edge.sourceNodeId || edge.source
-    const tgt = edgeModel?.targetNodeId || edge.targetNodeId || edge.target
-    const pointsList = edgeModel?.pointsList || edge.pointsList || []
-
-    return {
+    if (!edgeModel) return
+    
+    const src = edgeModel.sourceNodeId || ''
+    const tgt = edgeModel.targetNodeId || ''
+    const srcAnchor = edgeModel.sourceAnchorId || ''
+    const tgtAnchor = edgeModel.targetAnchorId || ''
+    // 用 源节点+源锚点->目标节点+目标锚点 作为去重 key
+    const key = `${src}_${srcAnchor}->${tgt}_${tgtAnchor}`
+    
+    // 如果已存在相同锚点的边，跳过（保留第一条）
+    if (edgeMap.has(key)) return
+    
+    // 优先从 gd.edges 中获取 pointsList
+    let pointsList = edge.pointsList
+    if (!pointsList || pointsList.length === 0) {
+      const edgeData = edgeModel.getData()
+      pointsList = edgeData.pointsList
+    }
+    if (!pointsList || pointsList.length === 0) {
+      const sp = edgeModel.startPoint
+      const ep = edgeModel.endPoint
+      if (sp && ep) {
+        pointsList = [{ x: sp.x, y: sp.y }, { x: ep.x, y: ep.y }]
+      } else {
+        pointsList = []
+      }
+    }
+    
+    edgeMap.set(key, {
       id: edge.id,
       sourceNodeId: src,
       targetNodeId: tgt,
       type: edge.type || 'polyline',
-      pointsList: pointsList
-    }
+      sourceAnchorId: srcAnchor,
+      targetAnchorId: tgtAnchor,
+      pointsList
+    })
   })
 
+  const edges = Array.from(edgeMap.values())
+  
+  console.log('[WorkflowCanvas] Saved edges (deduplicated):', edges.length, 'edges:', edges.map(e => `${e.sourceNodeId}->${e.targetNodeId}`))
+
   const data = { steps, edges }
-  console.log('[WorkflowCanvas] updateStepsFromCanvas:', JSON.stringify(data))
   emit('update:modelValue', data)
 }
 
@@ -625,6 +720,7 @@ defineExpose({
     if (!lf.value) return []
     const gd = lf.value.getGraphData()
     return gd.nodes.map(node => {
+      const nodeModel = lf.value.getNodeModelById(node.id)
       const props = node.properties || {}
       const nt = props.nodeType || 'llm'
       let stepType = 'agent'
@@ -642,9 +738,12 @@ defineExpose({
       else if (nt === 'java') stepType = 'java'
       else if (nt === 'classifier') stepType = 'classifier'
       else if (nt === 'extractor') stepType = 'extractor'
+      const savedX = nodeModel?.x ?? node.x ?? 0
+      const savedY = nodeModel?.y ?? node.y ?? 0
       return {
         id: node.id, name: node.text?.value || node.text || '',
         type: stepType, nodeType: nt,
+        x: savedX, y: savedY,
         config: props.config || '{}',
         inputVars: props.inputVars || '',
         outputVars: props.outputVars || '',
@@ -678,9 +777,12 @@ defineExpose({
       else if (nt === 'java') stepType = 'java'
       else if (nt === 'classifier') stepType = 'classifier'
       else if (nt === 'extractor') stepType = 'extractor'
+      const savedX = nodeModel?.x ?? node.x ?? 0
+      const savedY = nodeModel?.y ?? node.y ?? 0
       return {
         id: node.id, name: node.text?.value || node.text || '',
         type: stepType, nodeType: nt,
+        x: savedX, y: savedY,
         config: props.config || '{}',
         inputVars: props.inputVars || '',
         outputVars: props.outputVars || '',
@@ -697,6 +799,8 @@ defineExpose({
         sourceNodeId: edgeModel?.sourceNodeId || edge.sourceNodeId || edge.source,
         targetNodeId: edgeModel?.targetNodeId || edge.targetNodeId || edge.target,
         type: edge.type || 'polyline',
+        sourceAnchorId: edgeModel?.sourceAnchorId || edge.sourceAnchorId || '',
+        targetAnchorId: edgeModel?.targetAnchorId || edge.targetAnchorId || '',
         pointsList: edgeModel?.pointsList || edge.pointsList || []
       }
     })
