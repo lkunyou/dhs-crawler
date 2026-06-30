@@ -143,7 +143,12 @@
         </el-row>
       </el-form>
       <div style="width: 100%; height: 500px;">
-        <WorkflowCanvas ref="workflowCanvasRef" :model-value="canvasData" @update:model-value="onCanvasDataUpdate" />
+        <WorkflowCanvas 
+          ref="workflowCanvasRef" 
+          :model-value="canvasData" 
+          :workflow-id="form.id"
+          @update:model-value="onCanvasDataUpdate" 
+        />
       </div>
       <template #footer>
         <el-button @click="showDialog = false">取消</el-button>

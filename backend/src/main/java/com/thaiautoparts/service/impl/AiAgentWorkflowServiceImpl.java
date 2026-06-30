@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.thaiautoparts.dto.AiAgentWorkflowDTO;
 import com.thaiautoparts.dto.AiAgentWorkflowExecDTO;
+import com.thaiautoparts.dto.AiAgentWorkflowDebugDTO;
 import com.thaiautoparts.dto.ChatRequest;
 import com.thaiautoparts.dto.ChatResponse;
 import com.thaiautoparts.entity.AiAgentWorkflow;
@@ -256,6 +257,112 @@ public class AiAgentWorkflowServiceImpl implements AiAgentWorkflowService {
             execMapper.updateErrorById(execId, e.getMessage());
             execMapper.updateStatusById(execId, "failed");
         }
+    }
+
+    @Override
+    public AiAgentWorkflowDebugDTO debugWorkflow(Long workflowId, Map<String, Object> input) {
+        AiAgentWorkflow workflow = workflowMapper.selectById(workflowId);
+        if (workflow == null) throw new RuntimeException("Workflow not found");
+
+        AiAgentWorkflowDebugDTO debugResult = new AiAgentWorkflowDebugDTO();
+        debugResult.setStatus("running");
+        debugResult.setStepResults(new ArrayList<>());
+
+        try {
+            Map<String, Object> context = new HashMap<>();
+            context.put("input", input != null ? input : convertJsonToVariables(workflow.getVariables()));
+
+            List<AiAgentWorkflowDTO.WorkflowStep> steps = convertJsonToSteps(workflow.getSteps());
+            debugResult.setTotalSteps(steps.size());
+
+            for (int i = 0; i < steps.size(); i++) {
+                AiAgentWorkflowDTO.WorkflowStep step = steps.get(i);
+                AiAgentWorkflowDebugDTO.StepResult stepResult = new AiAgentWorkflowDebugDTO.StepResult();
+                stepResult.setIndex(i);
+                stepResult.setStepId(step.getId());
+                stepResult.setStepName(step.getName());
+                stepResult.setStepType(step.getType());
+                stepResult.setExecutedAt(LocalDateTime.now());
+
+                long startTime = System.currentTimeMillis();
+                try {
+                    // 记录输入
+                    Map<String, Object> stepInput = new HashMap<>();
+                    if (step.getInputVars() != null && !step.getInputVars().isEmpty()) {
+                        String[] vars = step.getInputVars().split("\\n");
+                        for (String var : vars) {
+                            var = var.trim();
+                            if (!var.isEmpty()) {
+                                stepInput.put(var, resolveVariablePath(var, context));
+                            }
+                        }
+                    }
+                    stepResult.setInput(stepInput);
+
+                    // 执行步骤
+                    Object result = executeStep(step, context);
+                    stepResult.setOutput(result);
+                    stepResult.setStatus("success");
+
+                    // 更新上下文
+                    context.put("step_" + (i + 1), result);
+                    if (step.getName() != null) context.put(step.getName(), result);
+
+                    // 条件分支处理
+                    if ("condition".equals(step.getType()) && result instanceof Map) {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> condResult = (Map<String, Object>) result;
+                        String branch = (String) condResult.get("branch");
+                        if (branch != null) {
+                            int jumpIdx = findStepByName(steps, branch);
+                            if (jumpIdx >= 0) {
+                                i = jumpIdx - 1;
+                                continue;
+                            }
+                        }
+                    }
+
+                    // 循环节点处理
+                    if ("loop".equals(step.getType()) && result instanceof Map) {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> loopResult = (Map<String, Object>) result;
+                        Boolean shouldContinue = (Boolean) loopResult.get("continue");
+                        if (Boolean.TRUE.equals(shouldContinue)) {
+                            int loopStart = findStepByName(steps, step.getName() + "_body");
+                            if (loopStart >= 0) {
+                                i = loopStart - 1;
+                                continue;
+                            }
+                        }
+                    }
+
+                } catch (Exception e) {
+                    stepResult.setStatus("failed");
+                    stepResult.setErrorMessage(e.getMessage());
+                    debugResult.setErrorMessage(e.getMessage());
+                    debugResult.setStatus("failed");
+                    debugResult.getStepResults().add(stepResult);
+                    break;
+                }
+                long endTime = System.currentTimeMillis();
+                stepResult.setExecutionTimeMs(endTime - startTime);
+                debugResult.getStepResults().add(stepResult);
+                debugResult.setCurrentStepIndex(i);
+                debugResult.setCurrentStepId(step.getId());
+                debugResult.setCurrentStepName(step.getName());
+            }
+
+            if ("running".equals(debugResult.getStatus())) {
+                debugResult.setStatus("completed");
+            }
+
+        } catch (Exception e) {
+            log.error("Debug workflow failed", e);
+            debugResult.setStatus("failed");
+            debugResult.setErrorMessage(e.getMessage());
+        }
+
+        return debugResult;
     }
 
     /**

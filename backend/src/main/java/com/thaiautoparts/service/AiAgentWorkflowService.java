@@ -2,6 +2,7 @@ package com.thaiautoparts.service;
 
 import com.thaiautoparts.dto.AiAgentWorkflowDTO;
 import com.thaiautoparts.dto.AiAgentWorkflowExecDTO;
+import com.thaiautoparts.dto.AiAgentWorkflowDebugDTO;
 import java.util.List;
 import java.util.Map;
 
@@ -21,4 +22,7 @@ public interface AiAgentWorkflowService {
     AiAgentWorkflowExecDTO getExecution(Long id);
     AiAgentWorkflowExecDTO executeWorkflow(Long workflowId, Map<String, Object> input);
     void stopExecution(Long id);
+
+    // 调试执行
+    AiAgentWorkflowDebugDTO debugWorkflow(Long workflowId, Map<String, Object> input);
 }

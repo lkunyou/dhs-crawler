@@ -14,6 +14,9 @@
         <el-button size="small" @click="fitView" title="适应"><el-icon><FullScreen /></el-icon></el-button>
       </div>
       <div class="header-right">
+        <el-button size="small" type="warning" @click="handleDebug" :loading="debugLoading">
+          <el-icon><Cpu /></el-icon> 调试
+        </el-button>
         <el-button size="small" @click="clearCanvas" title="清空"><el-icon><Delete /></el-icon> 清空</el-button>
       </div>
     </div>
@@ -86,6 +89,9 @@
           </div>
           <div class="node-category">
             <div class="category-title">基础节点</div>
+            <div class="node-item node-start" @click="addNodeToCanvas('start')">
+              <el-icon><VideoPlay /></el-icon><span>开始</span>
+            </div>
             <div class="node-item node-end" @click="addNodeToCanvas('end')">
               <el-icon><VideoPause /></el-icon><span>结束</span>
             </div>
@@ -151,7 +157,24 @@
             <el-input v-model="nodeForm.prompt" type="textarea" :rows="4" placeholder="回复内容模板" @blur="applyNodeChanges" />
           </el-form-item>
           <el-form-item label="工具名" v-if="nodeForm.nodeType === 'tool'">
-            <el-input v-model="nodeForm.toolName" placeholder="MCP工具名称" @blur="applyNodeChanges" />
+            <el-select 
+              v-model="nodeForm.toolName" 
+              placeholder="选择MCP工具" 
+              style="width: 100%"
+              filterable
+              @focus="loadMcpTools"
+              @change="applyNodeChanges"
+            >
+              <el-option 
+                v-for="tool in mcpTools" 
+                :key="tool.name" 
+                :label="tool.name" 
+                :value="tool.name"
+              >
+                <span>{{ tool.name }}</span>
+                <span v-if="tool.description" style="color: #909399; font-size: 12px; margin-left: 8px;">{{ tool.description }}</span>
+              </el-option>
+            </el-select>
           </el-form-item>
           <el-form-item label="URL" v-if="nodeForm.nodeType === 'http'">
             <el-input v-model="nodeForm.toolName" placeholder="请求URL" @blur="applyNodeChanges" />
@@ -166,6 +189,53 @@
           <el-button type="danger" size="small" @click.stop="deleteSelectedNode" style="width: 100%">删除节点</el-button>
         </el-form>
       </div>
+
+      <!-- 调试面板 -->
+      <div class="debug-panel" v-if="debugVisible">
+        <div class="panel-title">
+          调试结果
+          <el-icon style="cursor:pointer; margin-left: auto;" @click="debugVisible = false"><Close /></el-icon>
+        </div>
+        <div class="debug-content">
+          <div class="debug-status-bar">
+            <el-tag :type="debugResult?.status === 'completed' ? 'success' : debugResult?.status === 'failed' ? 'danger' : 'warning'" size="small">
+              {{ debugResult?.status === 'completed' ? '已完成' : debugResult?.status === 'failed' ? '失败' : '运行中' }}
+            </el-tag>
+            <span class="debug-step-info">步骤 {{ debugResult?.stepResults?.length || 0 }} / {{ debugResult?.totalSteps || 0 }}</span>
+          </div>
+          <div v-if="debugResult?.errorMessage" class="debug-error">
+            <el-alert type="error" :title="debugResult.errorMessage" :closable="false" />
+          </div>
+          <div class="debug-steps">
+            <div v-for="sr in debugResult?.stepResults || []" :key="sr.index" 
+                 class="debug-step-item" 
+                 :class="{ 'step-success': sr.status === 'success', 'step-failed': sr.status === 'failed' }"
+                 @click="highlightDebugNode(sr.stepId)">
+              <div class="debug-step-header">
+                <el-icon :class="sr.status === 'success' ? 'icon-success' : 'icon-failed'">
+                  <Check v-if="sr.status === 'success'" />
+                  <Close v-else />
+                </el-icon>
+                <span class="debug-step-name">{{ sr.stepName }}</span>
+                <el-tag size="small" type="info">{{ sr.stepType }}</el-tag>
+                <span class="debug-step-time">{{ sr.executionTimeMs }}ms</span>
+              </div>
+              <div v-if="sr.input && Object.keys(sr.input).length > 0" class="debug-step-detail">
+                <div class="detail-label">输入:</div>
+                <pre class="detail-json">{{ JSON.stringify(sr.input, null, 2) }}</pre>
+              </div>
+              <div v-if="sr.output" class="debug-step-detail">
+                <div class="detail-label">输出:</div>
+                <pre class="detail-json">{{ typeof sr.output === 'object' ? JSON.stringify(sr.output, null, 2) : sr.output }}</pre>
+              </div>
+              <div v-if="sr.errorMessage" class="debug-step-detail">
+                <div class="detail-label" style="color: #F56C6C;">错误:</div>
+                <pre class="detail-json" style="color: #F56C6C;">{{ sr.errorMessage }}</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -175,14 +245,19 @@ import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
   Check, Download, ZoomIn, ZoomOut, Refresh, FullScreen, Delete,
-  VideoPause, Cpu, Tools, EditPen, Share, Close,
+  VideoPause, VideoPlay, Cpu, Tools, EditPen, Share, Close,
   Grid, Edit, Document, ChatDotRound, Link, Coin, Monitor,
   Connection, Collection, RefreshRight, Reading
 } from '@element-plus/icons-vue'
 import LogicFlow from '@logicflow/core'
 import '@logicflow/core/es/style/index.css'
+import { debugWorkflow as apiDebugWorkflow } from '@/api/aiWorkflow'
+import { getMcpTools } from '@/api/aiManagement'
 
-const props = defineProps({ modelValue: { type: Array, default: () => [] } })
+const props = defineProps({ 
+  modelValue: { type: Array, default: () => [] },
+  workflowId: { type: [Number, String], default: null }
+})
 const emit = defineEmits(['update:modelValue', 'save'])
 
 const lfContainer = ref(null)
@@ -196,6 +271,29 @@ const nodeForm = ref({
 })
 let resizeObserver = null
 let nodeCounter = 0
+
+// 调试状态
+const debugVisible = ref(false)
+const debugResult = ref(null)
+const debugLoading = ref(false)
+const highlightedNodeId = ref(null)
+
+// MCP工具列表
+const mcpTools = ref([])
+const mcpToolsLoading = ref(false)
+
+const loadMcpTools = async () => {
+  if (mcpTools.value.length > 0) return
+  mcpToolsLoading.value = true
+  try {
+    const res = await getMcpTools()
+    mcpTools.value = (res.data || []).filter(t => t.enabled !== false)
+  } catch (e) {
+    console.error('[WorkflowCanvas] Failed to load MCP tools:', e)
+  } finally {
+    mcpToolsLoading.value = false
+  }
+}
 
 // 节点类型配置：颜色、图标SVG路径
 const nodeTypeMap = {
@@ -214,7 +312,8 @@ const nodeTypeMap = {
   http:          { name: 'HTTP 请求',  color: '#F56C6C', icon: 'M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z' },
   sql:           { name: 'SQL自定义',  color: '#F56C6C', icon: 'M12 2C6.48 2 2 4.02 2 6.5S6.48 11 12 11s10-2.02 10-4.5S17.52 2 12 2zm0 13c-5.52 0-10-2.02-10-4.5v3C2 16.02 6.48 18 12 18s10-1.98 10-4.5v-3C22 12.98 17.52 15 12 15zm0 5c-5.52 0-10-2.02-10-4.5v3C2 21.02 6.48 23 12 23s10-1.98 10-4.5v-3C22 17.98 17.52 20 12 20z' },
   java:          { name: 'Java 增强',  color: '#F56C6C', icon: 'M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM5 15h14v3H5z' },
-  end:           { name: '结束',       color: '#F56C6C', icon: 'M6 6h12v12H6z' }
+  end:           { name: '结束',       color: '#F56C6C', icon: 'M6 6h12v12H6z' },
+  start:         { name: '开始',       color: '#67C23A', icon: 'M8 5v14l11-7z' }
 }
 
 const getNodeTypeName = (t) => nodeTypeMap[t]?.name || t
@@ -236,7 +335,8 @@ const nodeIcons = {
   http: '<path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/>',
   sql: '<path d="M12 2C6.48 2 2 4.02 2 6.5S6.48 11 12 11s10-2.02 10-4.5S17.52 2 12 2zm0 13c-5.52 0-10-2.02-10-4.5v3C2 16.02 6.48 18 12 18s10-1.98 10-4.5v-3C22 12.98 17.52 15 12 15zm0 5c-5.52 0-10-2.02-10-4.5v3C2 21.02 6.48 23 12 23s10-1.98 10-4.5v-3C22 17.98 17.52 20 12 20z"/>',
   java: '<path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM5 15h14v3H5z"/>',
-  end: '<path d="M6 6h12v12H6z"/>'
+  end: '<path d="M6 6h12v12H6z"/>',
+  start: '<path d="M8 5v14l11-7z"/>'
 }
 
 onMounted(() => {
@@ -314,6 +414,20 @@ const initLogicFlow = () => {
     if (confirm('确定删除此连线？')) lf.value.deleteEdge(data.id)
   })
 
+  // 覆盖 deleteNode 方法，防止删除开始/结束节点
+  const originalDeleteNode = lf.value.deleteNode.bind(lf.value)
+  lf.value.deleteNode = (nodeId) => {
+    const nodeModel = lf.value.getNodeModelById(nodeId)
+    if (nodeModel) {
+      const nt = nodeModel.properties?.nodeType || ''
+      if (nt === 'start' || nt === 'end') {
+        ElMessage.warning('开始节点和结束节点不能删除')
+        return false
+      }
+    }
+    return originalDeleteNode(nodeId)
+  }
+
   if (resizeObserver) resizeObserver.disconnect()
   resizeObserver = new ResizeObserver(() => {
     if (lf.value && lfContainer.value) {
@@ -331,6 +445,27 @@ const initLogicFlow = () => {
   
   if (hasData) {
     loadStepsToCanvas(props.modelValue)
+  } else {
+    // 无数据时自动创建开始和结束节点
+    const startId = `node_start`
+    const endId = `node_end`
+    lf.value.addNode({
+      id: startId, type: 'rect', x: 150, y: 100,
+      text: '开始',
+      properties: { nodeType: 'start', config: '{}', deletable: false }
+    })
+    lf.value.addNode({
+      id: endId, type: 'rect', x: 450, y: 100,
+      text: '结束',
+      properties: { nodeType: 'end', config: '{}', deletable: false }
+    })
+    lf.value.addEdge({
+      id: 'edge_start_end',
+      sourceNodeId: startId,
+      targetNodeId: endId,
+      type: 'polyline'
+    })
+    updateStepsFromCanvas()
   }
 }
 
@@ -379,7 +514,11 @@ const doAddNode = (type) => {
     lf.value.addNode({
       id, type: 'rect', x, y,
       text: info.name,
-      properties: { nodeType: type, config: '{}' }
+      properties: { 
+        nodeType: type, 
+        config: '{}',
+        deletable: type !== 'start' && type !== 'end'
+      }
     })
     updateStepsFromCanvas()
     console.log('[WorkflowCanvas] Node added successfully')
@@ -456,10 +595,16 @@ const deleteSelectedNode = () => {
     return
   }
 
+  // 检查节点是否可删除（开始和结束节点不能删除）
+  const nodeType = nodeModel.properties?.nodeType || ''
+  if (nodeType === 'start' || nodeType === 'end') {
+    ElMessage.warning('开始节点和结束节点不能删除')
+    return
+  }
+
   try {
-    console.log('[WorkflowCanvas] Attempting to delete node via graphModel:', nodeId)
-    // 直接使用 graphModel 删除
-    lf.value.graphModel.deleteNode(nodeId)
+    console.log('[WorkflowCanvas] Attempting to delete node:', nodeId)
+    lf.value.deleteNode(nodeId)
     console.log('[WorkflowCanvas] graphModel.deleteNode succeeded')
 
     // 验证节点是否真的被删除
@@ -507,6 +652,72 @@ const handleExport = () => {
   const a = document.createElement('a')
   a.href = url; a.download = 'workflow.json'; a.click()
   URL.revokeObjectURL(url)
+}
+
+// 调试功能
+const handleDebug = async () => {
+  if (!props.workflowId) {
+    ElMessage.warning('请先保存工作流后再调试')
+    return
+  }
+  if (!lf.value) return
+
+  debugLoading.value = true
+  debugVisible.value = true
+  debugResult.value = null
+  highlightedNodeId.value = null
+
+  try {
+    const canvasData = lf.value.getGraphData()
+    const steps = canvasData.nodes.map(node => {
+      const nodeModel = lf.value.getNodeModelById(node.id)
+      const props = nodeModel?.properties || node.properties || {}
+      const nt = props.nodeType || 'llm'
+      let stepType = 'agent'
+      if (nt === 'end') stepType = 'end'
+      else if (nt === 'start') stepType = 'start'
+      else if (nt === 'knowledge' || nt === 'knowledgeWrite') stepType = 'knowledge'
+      else if (nt === 'condition') stepType = 'condition'
+      else if (nt === 'loop') stepType = 'loop'
+      else if (nt === 'subflow') stepType = 'subflow'
+      else if (nt === 'aggregate') stepType = 'aggregate'
+      else if (nt === 'script') stepType = 'script'
+      else if (nt === 'reply') stepType = 'reply'
+      else if (nt === 'tool') stepType = 'mcp'
+      else if (nt === 'http') stepType = 'http'
+      else if (nt === 'sql') stepType = 'sql'
+      else if (nt === 'java') stepType = 'java'
+      else if (nt === 'classifier') stepType = 'classifier'
+      else if (nt === 'extractor') stepType = 'extractor'
+      return {
+        id: node.id, name: node.text?.value || node.text || '',
+        type: stepType, nodeType: nt,
+        config: props.config || '{}',
+        inputVars: props.inputVars || '',
+        outputVars: props.outputVars || '',
+        model: props.model || '', prompt: props.prompt || '',
+        scriptCode: props.scriptCode || '', condition: props.condition || '',
+        toolName: props.toolName || ''
+      }
+    })
+
+    const res = await apiDebugWorkflow(props.workflowId, { steps })
+    debugResult.value = res.data
+    ElMessage.success('调试完成')
+  } catch (e) {
+    ElMessage.error('调试失败: ' + (e.message || '未知错误'))
+  } finally {
+    debugLoading.value = false
+  }
+}
+
+const highlightDebugNode = (nodeId) => {
+  if (!lf.value || !nodeId) return
+  highlightedNodeId.value = nodeId
+  const nodeModel = lf.value.getNodeModelById(nodeId)
+  if (nodeModel) {
+    lf.value.focusNode(nodeId)
+  }
 }
 
 const loadStepsToCanvas = (data) => {
@@ -647,6 +858,7 @@ const updateStepsFromCanvas = () => {
     else if (nt === 'java') stepType = 'java'
     else if (nt === 'classifier') stepType = 'classifier'
     else if (nt === 'extractor') stepType = 'extractor'
+    else if (nt === 'start') stepType = 'start'
     const savedX = nodeModel?.x ?? node.x ?? 0
     const savedY = nodeModel?.y ?? node.y ?? 0
     return {
@@ -738,6 +950,7 @@ defineExpose({
       else if (nt === 'java') stepType = 'java'
       else if (nt === 'classifier') stepType = 'classifier'
       else if (nt === 'extractor') stepType = 'extractor'
+      else if (nt === 'start') stepType = 'start'
       const savedX = nodeModel?.x ?? node.x ?? 0
       const savedY = nodeModel?.y ?? node.y ?? 0
       return {
@@ -777,6 +990,7 @@ defineExpose({
       else if (nt === 'java') stepType = 'java'
       else if (nt === 'classifier') stepType = 'classifier'
       else if (nt === 'extractor') stepType = 'extractor'
+      else if (nt === 'start') stepType = 'start'
       const savedX = nodeModel?.x ?? node.x ?? 0
       const savedY = nodeModel?.y ?? node.y ?? 0
       return {
@@ -895,6 +1109,7 @@ defineExpose({
 .node-sql { border-left: 3px solid #F56C6C; }
 .node-java { border-left: 3px solid #F56C6C; }
 .node-end { border-left: 3px solid #F56C6C; }
+.node-start { border-left: 3px solid #67C23A; }
 .canvas-area {
   flex: 1; background: #f5f7fa;
   min-width: 0; position: relative;
@@ -904,5 +1119,70 @@ defineExpose({
   border-left: 1px solid #ebeef5;
   background: #fff; overflow-y: auto;
   position: relative; z-index: 10;
+}
+
+/* 调试面板样式 */
+.debug-panel {
+  width: 320px; flex-shrink: 0;
+  border-left: 1px solid #ebeef5;
+  background: #fff; overflow-y: auto;
+  position: relative; z-index: 10;
+}
+.debug-content {
+  padding: 12px;
+}
+.debug-status-bar {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 12px; padding-bottom: 8px;
+  border-bottom: 1px solid #ebeef5;
+}
+.debug-step-info {
+  font-size: 12px; color: #606266;
+}
+.debug-error {
+  margin-bottom: 12px;
+}
+.debug-steps {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.debug-step-item {
+  border: 1px solid #ebeef5; border-radius: 6px;
+  padding: 10px; cursor: pointer;
+  transition: all 0.2s;
+}
+.debug-step-item:hover {
+  border-color: #409EFF; box-shadow: 0 2px 8px rgba(64,158,255,0.15);
+}
+.debug-step-item.step-success {
+  border-left: 3px solid #67C23A;
+}
+.debug-step-item.step-failed {
+  border-left: 3px solid #F56C6C;
+}
+.debug-step-header {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px;
+}
+.icon-success { color: #67C23A; }
+.icon-failed { color: #F56C6C; }
+.debug-step-name {
+  flex: 1; font-weight: 500; color: #303133;
+}
+.debug-step-time {
+  font-size: 11px; color: #909399;
+}
+.debug-step-detail {
+  margin-top: 8px; padding-top: 8px;
+  border-top: 1px dashed #ebeef5;
+}
+.detail-label {
+  font-size: 11px; color: #909399; margin-bottom: 4px;
+}
+.detail-json {
+  font-size: 11px; color: #606266;
+  background: #f5f7fa; padding: 8px;
+  border-radius: 4px; margin: 0;
+  white-space: pre-wrap; word-break: break-all;
+  max-height: 150px; overflow-y: auto;
 }
 </style>

@@ -2,6 +2,7 @@ package com.thaiautoparts.controller;
 
 import com.thaiautoparts.dto.AiAgentWorkflowDTO;
 import com.thaiautoparts.dto.AiAgentWorkflowExecDTO;
+import com.thaiautoparts.dto.AiAgentWorkflowDebugDTO;
 import com.thaiautoparts.dto.Result;
 import com.thaiautoparts.service.AiAgentWorkflowService;
 import lombok.RequiredArgsConstructor;
@@ -82,5 +83,10 @@ public class AiAgentWorkflowController {
     public Result<Void> stopExecution(@PathVariable Long execId) {
         workflowService.stopExecution(execId);
         return Result.success();
+    }
+
+    @PostMapping("/{id}/debug")
+    public Result<AiAgentWorkflowDebugDTO> debugWorkflow(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> input) {
+        return Result.success(workflowService.debugWorkflow(id, input));
     }
 }

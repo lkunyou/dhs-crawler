@@ -94,3 +94,11 @@ export function stopExecution(execId) {
     method: 'post'
   })
 }
+
+export function debugWorkflow(id, input) {
+  return request({
+    url: `/ai/workflow/${id}/debug`,
+    method: 'post',
+    data: input
+  })
+}
