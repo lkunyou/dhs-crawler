@@ -5,7 +5,7 @@
         <div class="card-header">
           <span>客户搜索</span>
           <div class="header-actions">
-            <el-tag type="info">支持 SerpAPI / Brave / Bing / DuckDuckGo / LinkedIn / Yellow Pages / URL导入</el-tag>
+            <el-tag type="info">支持 SerpAPI / Brave / Bing / DuckDuckGo / LinkedIn / Yellow Pages / Facebook / URL导入</el-tag>
           </div>
         </div>
       </template>
@@ -29,6 +29,7 @@
             <el-option label="DuckDuckGo" value="duckduckgo" />
             <el-option label="LinkedIn" value="linkedin" />
             <el-option label="Yellow Pages" value="yellowpages" />
+            <el-option label="Facebook" value="facebook" />
           </el-select>
         </el-form-item>
         <el-form-item label="国家">
@@ -46,6 +47,15 @@
           <el-button @click="handleReset">重置</el-button>
         </el-form-item>
       </el-form>
+
+      <!-- Facebook Cookie配置 -->
+      <el-alert v-if="searchForm.source === 'facebook'" type="info" style="margin-bottom: 20px" :closable="false">
+        <template #title>
+          Facebook 搜索说明
+        </template>
+        <p>Facebook 搜索使用 SerpAPI，需要在系统配置中设置 <code>search.serpapi-key</code>。</p>
+        <p>无需填写 Cookie，搜索将自动过滤 Facebook 页面结果。</p>
+      </el-alert>
 
       <!-- URL导入区域 -->
       <el-collapse v-model="activeCollapse" style="margin-bottom: 20px">

@@ -5,6 +5,7 @@ import com.thaiautoparts.service.SystemConfigService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -21,10 +22,6 @@ public class CustomerSearchServiceImpl implements CustomerSearchService {
 
     private final SystemConfigService systemConfigService;
 
-    public CustomerSearchServiceImpl(SystemConfigService systemConfigService) {
-        this.systemConfigService = systemConfigService;
-    }
-
     @Value("${app.search.serpapi-key:}")
     private String serpApiKeyYml;
 
@@ -38,7 +35,16 @@ public class CustomerSearchServiceImpl implements CustomerSearchService {
         return systemConfigService.getValue(key, defaultValue);
     }
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private RestTemplate restTemplate;
+
+    public CustomerSearchServiceImpl(SystemConfigService systemConfigService) {
+        this.systemConfigService = systemConfigService;
+        // 配置超时时间
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(30000); // 30秒连接超时
+        factory.setReadTimeout(60000);    // 60秒读取超时
+        this.restTemplate = new RestTemplate(factory);
+    }
 
     @Override
     public List<Map<String, Object>> searchCompanies(String keyword, String source, String country) {
@@ -59,6 +65,8 @@ public class CustomerSearchServiceImpl implements CustomerSearchService {
                 return searchWithLinkedIn(keyword, country);
             case "yellowpages":
                 return searchYellowPages(keyword, country);
+            case "facebook":
+                return searchWithFacebook(keyword, country);
             default:
                 return searchWithBrave(keyword, country);
         }
@@ -324,6 +332,63 @@ public class CustomerSearchServiceImpl implements CustomerSearchService {
             }
         } catch (Exception e) {
             log.error("Yellow Pages搜索失败", e);
+        }
+        return results;
+    }
+
+    private List<Map<String, Object>> searchWithFacebook(String keyword, String country) {
+        List<Map<String, Object>> results = new ArrayList<>();
+        try {
+            String apiKey = getSearchConfig("search.serpapi-key", serpApiKeyYml);
+            if (apiKey == null || apiKey.isEmpty()) {
+                log.warn("SerpAPI key未配置，无法进行Facebook搜索");
+                return results;
+            }
+
+            // 使用SerpAPI搜索Facebook页面
+            String query = URLEncoder.encode("site:facebook.com " + keyword + " auto parts Thailand", StandardCharsets.UTF_8);
+            String url = String.format(
+                "https://serpapi.com/search.json?q=%s&gl=%s&hl=en&api_key=%s",
+                query, country.toLowerCase(), apiKey
+            );
+
+            ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
+            Map<String, Object> body = response.getBody();
+
+            if (body != null && body.containsKey("organic_results")) {
+                List<Map<String, Object>> organicResults = (List<Map<String, Object>>) body.get("organic_results");
+                for (Map<String, Object> item : organicResults) {
+                    String title = (String) item.get("title");
+                    String link = (String) item.get("link");
+                    
+                    // 只保留facebook相关的结果
+                    if (link != null && link.contains("facebook.com")) {
+                        Map<String, Object> company = new HashMap<>();
+                        
+                        // 从标题提取公司名（去掉" - Facebook"等后缀）
+                        String companyName = title.replaceAll("\\s*\\|\\s*Facebook.*$", "")
+                                                  .replaceAll("\\s*-\\s*Facebook.*$", "")
+                                                  .replaceAll("\\s*\\(.*\\)$", "")
+                                                  .trim();
+                        
+                        company.put("companyName", companyName);
+                        company.put("website", link);
+                        company.put("description", item.get("snippet"));
+                        company.put("source", "Facebook");
+                        company.put("country", country);
+                        company.put("searchKeyword", keyword);
+
+                        // 尝试从描述提取联系方式
+                        extractContactInfo(company, (String) item.get("snippet"));
+
+                        results.add(company);
+                    }
+                }
+            }
+            
+            log.info("Facebook搜索完成，找到 {} 条结果", results.size());
+        } catch (Exception e) {
+            log.error("Facebook搜索失败", e);
         }
         return results;
     }
